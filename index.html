@@ -279,6 +279,7 @@
       <button class="btn-ghost" id="autoBtn" data-i18n="autoBtn"></button>
       <button class="btn-ghost hidden" id="installBtn" data-i18n="installBtn"></button>
       <p class="fineprint" data-i18n="fineprint"></p>
+      <p style="text-align:center;font-size:10px;color:var(--muted);opacity:.55;margin-top:4px;font-family:var(--mono)">AlUla Lens · build 5</p>
     </div>
   </section>
 
@@ -805,7 +806,17 @@ $('#startBtn').onclick=async()=>{
   if(!state.orient)setTimeout(()=>toast(L('dragHint')),800);
   if(state.mode==='demo'){loadDemo();}else{$('#rad').style.display='flex';acquireAndFetch();}
 };
-function loadDemo(){$('#rad').style.display='none';state.user={...DEMO_CENTER};setData(DEMO_POIS);hideLoader();status(L('statusTour'));if(map)refreshMapMarkers();}
+function loadDemo(){
+  $('#rad').style.display='none';state.user={...DEMO_CENTER};setData(DEMO_POIS);hideLoader();status(L('statusTour'));if(map)refreshMapMarkers();
+  // استخدم الموقع الحقيقي للزائر كنقطة أصل: من جدة يظهر اتجاه العلا، ومن داخل العلا تظهر المواقع المحيطة
+  if(window.isSecureContext&&navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      state.user={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      if(map){map.setView([state.user.lat,state.user.lng]);refreshMapMarkers();}
+      navigator.geolocation.watchPosition(p2=>{state.user={lat:p2.coords.latitude,lng:p2.coords.longitude};},()=>{},{enableHighAccuracy:true,maximumAge:5000,timeout:9000});
+    },()=>{},{enableHighAccuracy:true,timeout:8000,maximumAge:10000});
+  }
+}
 function acquireAndFetch(){
   if(!window.isSecureContext){toast(L('geoHttps'));state.mode='demo';loadDemo();return;}
   if(!navigator.geolocation){toast(L('noGeo'));state.mode='demo';loadDemo();return;}
@@ -821,21 +832,34 @@ async function startCamera(){
   catch(e){state.cam=false;$('#cam').style.display='none';$('#backdrop').style.display='block';
     let m=L('camFail');if(!window.isSecureContext)m=L('camHttps');else if(e&&e.name==='NotAllowedError')m=L('camDenied');else if(e&&e.name==='NotFoundError')m=L('camNone');toast(m);}
 }
+let dragging=false;
 async function startOrientation(){
   try{
     if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
-      const res=await DeviceOrientationEvent.requestPermission();if(res!=='granted'){enableDrag();return;}}
-    let got=false;const h=e=>{let v=null;if(e.webkitCompassHeading!=null)v=e.webkitCompassHeading;else if(e.absolute&&e.alpha!=null)v=(360-e.alpha)%360;if(v!=null&&!state.manual){state.heading=v;state.orient=true;got=true;}};
-    window.addEventListener('deviceorientationabsolute',h,true);window.addEventListener('deviceorientation',h,true);
-    setTimeout(()=>{if(!got)enableDrag();},700);
-  }catch(e){enableDrag();}
+      try{const res=await DeviceOrientationEvent.requestPermission();if(res!=='granted'){enableDrag();toast(L('dragHint'));return;}}catch(e){}
+    }
+    const handler=e=>{
+      let v=null;
+      if(typeof e.webkitCompassHeading==='number'&&!isNaN(e.webkitCompassHeading))v=e.webkitCompassHeading;      // iOS: شمال حقيقي
+      else if(e.alpha!=null&&e.absolute===true)v=(360-e.alpha)%360;                                              // أندرويد: مطلق فقط
+      if(v==null)return;
+      const so=(screen.orientation&&screen.orientation.angle)||window.orientation||0;                            // تعويض دوران الشاشة
+      v=(v+so+360)%360;
+      state.compass=true;state.orient=true;
+      if(!dragging&&!state.autoplay)state.heading=(state.heading+norm180(v-state.heading)*0.28+360)%360;          // تنعيم خفيف
+    };
+    window.addEventListener('deviceorientationabsolute',handler,true);
+    window.addEventListener('deviceorientation',handler,true);
+    enableDrag();                                                                                                // السحب متاح دائماً كتحكّم يدوي
+    setTimeout(()=>{if(!state.compass)toast(L('dragHint'));},1600);
+  }catch(e){enableDrag();toast(L('dragHint'));}
 }
 function enableDrag(){
-  if(state.orient||state.dragOn)return;state.dragOn=true;state.manual=true;
-  let down=false,sx=0,sh=0;const surface=$('#app');
-  const dn=e=>{if(e.target.closest('#dock,#topbar,#sheet,#search,.screen,.poi,.edge,#loader,#langsheet,#langbar'))return;down=true;sx=e.touches?e.touches[0].clientX:e.clientX;sh=state.heading;};
-  const mv=e=>{if(!down)return;const x=e.touches?e.touches[0].clientX:e.clientX;state.heading=(sh+(sx-x)*0.4+360)%360;};
-  const up=()=>down=false;
+  if(state.dragOn)return;state.dragOn=true;
+  let sx=0,sh=0;const surface=$('#app');
+  const dn=e=>{if(e.target.closest('#dock,#topbar,#sheet,#search,.screen,.poi,.edge,#loader,#langsheet,#langbar'))return;dragging=true;sx=e.touches?e.touches[0].clientX:e.clientX;sh=state.heading;};
+  const mv=e=>{if(!dragging)return;const x=e.touches?e.touches[0].clientX:e.clientX;state.heading=(sh+(sx-x)*0.4+360)%360;};
+  const up=()=>{dragging=false;};
   surface.addEventListener('touchstart',dn,{passive:true});surface.addEventListener('touchmove',mv,{passive:true});surface.addEventListener('touchend',up);
   surface.addEventListener('mousedown',dn);window.addEventListener('mousemove',mv);window.addEventListener('mouseup',up);
 }
