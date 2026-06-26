@@ -1,5 +1,5 @@
 /* عدسة العلا — Service Worker */
-const CACHE = 'alula-ar-v1';
+const CACHE = 'alula-ar-v4';
 const SHELL = [
   './',
   './index.html',

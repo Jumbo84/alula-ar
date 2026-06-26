@@ -1,96 +1,103 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>عدسة العلا — دليل الواقع المعزز الحي</title>
+<title>AlUla Lens — AR Travel Guide</title>
 <meta name="theme-color" content="#15110D">
 <link rel="manifest" href="./manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="عدسة العلا">
+<meta name="apple-mobile-web-app-title" content="AlUla Lens">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" type="image/png" href="./icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   :root{
-    --gold:#D8A24A; --sky:#6FA3C7; --terra:#E08A5B; --oasis:#8FB98A;
-    --ink:#F4EEE3; --muted:#A39A88;
-    --glass:rgba(20,16,12,0.62); --glass-strong:rgba(16,12,9,0.86);
-    --line:rgba(244,238,227,0.16); --sand:#C9A36A;
+    --gold:#D8A24A; --gold-deep:#C9893A; --sky:#6FA3C7; --terra:#E08A5B; --oasis:#8FB98A;
+    --ink:#F4EEE3; --muted:#A79C88;
+    --glass:rgba(20,16,12,0.6); --glass-strong:rgba(15,11,8,0.88);
+    --line:rgba(244,238,227,0.15); --sand:#C9A36A;
     --bg0:#15110D; --bg1:#2A1F16; --bg2:#5E4427; --bg3:#8A6638;
-    --ar:'IBM Plex Sans Arabic',system-ui,sans-serif;
+    --lat:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --arf:'IBM Plex Sans Arabic',system-ui,sans-serif;
+    --zhf:'Noto Sans SC',system-ui,sans-serif;
     --mono:'IBM Plex Mono',ui-monospace,monospace;
     --disp:'Space Grotesk',sans-serif;
+    --ui:var(--lat);
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%;overflow:hidden;background:#000;font-family:var(--ar);color:var(--ink)}
+  html,body{height:100%;overflow:hidden;background:#000;font-family:var(--ui);color:var(--ink)}
+  body[data-lang="ar"]{--ui:var(--arf)}
+  body[data-lang="zh"]{--ui:var(--zhf)}
   #app{position:fixed;inset:0;overflow:hidden}
+  .num{font-family:var(--mono)}
 
   #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;background:#000}
   #backdrop{position:absolute;inset:0;z-index:0;display:none;
     background:radial-gradient(120% 80% at 50% 120%, rgba(216,162,74,0.25), transparent 60%),
       linear-gradient(180deg, var(--bg0) 0%, var(--bg1) 42%, var(--bg2) 78%, var(--bg3) 100%);}
   #backdrop::after{content:"";position:absolute;left:0;right:0;bottom:0;height:38%;background:linear-gradient(180deg,transparent, rgba(10,7,4,0.55));}
-  #scrim{position:absolute;inset:0;z-index:1;pointer-events:none;
-    background:linear-gradient(180deg, rgba(8,6,4,0.55) 0%, transparent 22%, transparent 60%, rgba(8,6,4,0.74) 100%);}
+  #scrim{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg, rgba(8,6,4,0.5) 0%, transparent 24%, transparent 60%, rgba(8,6,4,0.72) 100%);}
   .hidden{display:none !important}
 
-  /* شاشة البداية */
+  /* ===== شريط اللغة العلوي في البداية ===== */
+  #langbar{position:absolute;top:max(14px,env(safe-area-inset-top));inset-inline:18px;z-index:52;display:flex;justify-content:flex-end}
+  .langbtn{display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:30px;cursor:pointer;font-weight:600;font-size:13px;
+    border:1px solid var(--line);background:rgba(0,0,0,0.32);color:var(--ink);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .langbtn svg{width:16px;height:16px}
+
+  /* ===== شاشة البداية ===== */
   #intro{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;justify-content:space-between;
-    padding:max(34px,env(safe-area-inset-top)) 26px max(30px,env(safe-area-inset-bottom));
-    background:radial-gradient(130% 70% at 50% -10%, rgba(216,162,74,0.22), transparent 55%),linear-gradient(180deg,#120E0A,#241A12 55%,#3c2c1b);}
+    padding:max(70px,calc(env(safe-area-inset-top) + 58px)) 26px max(28px,env(safe-area-inset-bottom));
+    background:radial-gradient(130% 70% at 50% -10%, rgba(216,162,74,0.22), transparent 55%),linear-gradient(180deg,#120E0A,#241A12 55%,#3c2c1b);overflow-y:auto}
   .brand{display:flex;align-items:center;gap:12px}
-  .brand .mark{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
-    background:linear-gradient(145deg,#E7B85F,#9C6F2E);box-shadow:0 8px 30px rgba(216,162,74,0.35), inset 0 1px 0 rgba(255,255,255,0.4)}
+  .brand .mark{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#E7B85F,#9C6F2E);box-shadow:0 8px 30px rgba(216,162,74,0.35), inset 0 1px 0 rgba(255,255,255,0.4)}
   .brand .mark svg{width:26px;height:26px}
   .brand .wm b{font-family:var(--disp);font-weight:700;letter-spacing:.14em;font-size:13px;color:var(--gold);display:block}
   .brand .wm span{font-weight:600;font-size:19px}
-  .intro-hero h1{font-size:32px;line-height:1.2;font-weight:700;margin-bottom:14px;letter-spacing:-.01em}
+  .intro-hero{margin:8px 0}
+  .intro-hero h1{font-size:31px;line-height:1.22;font-weight:700;margin-bottom:13px;letter-spacing:-.01em}
   .intro-hero h1 em{font-style:normal;color:var(--gold)}
-  .intro-hero p{color:var(--muted);font-size:15px;line-height:1.7;max-width:32ch}
-  .perm-list{display:flex;flex-direction:column;gap:2px;margin-top:24px}
-  .perm{display:flex;align-items:center;gap:13px;padding:13px 4px;border-top:1px solid var(--line)}
+  .intro-hero p{color:var(--muted);font-size:15px;line-height:1.7;max-width:34ch}
+  .perm-list{display:flex;flex-direction:column;gap:2px;margin-top:20px}
+  .perm{display:flex;align-items:center;gap:13px;padding:12px 2px;border-top:1px solid var(--line)}
   .perm:last-child{border-bottom:1px solid var(--line)}
   .perm .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;background:rgba(244,238,227,0.07);color:var(--sand)}
   .perm .ic svg{width:18px;height:18px}
   .perm .tx b{font-size:14px;font-weight:600;display:block}
   .perm .tx span{font-size:12.5px;color:var(--muted)}
-  .start-zone{display:flex;flex-direction:column;gap:14px}
+  .start-zone{display:flex;flex-direction:column;gap:12px;margin-top:18px}
   .mode-toggle{display:flex;background:rgba(0,0,0,0.3);border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px}
-  .mode-toggle button{flex:1;border:0;background:transparent;color:var(--muted);font-family:var(--ar);font-size:13.5px;font-weight:600;padding:11px;border-radius:10px;cursor:pointer;transition:.2s}
+  .mode-toggle button{flex:1;border:0;background:transparent;color:var(--muted);font-family:inherit;font-size:13.5px;font-weight:600;padding:11px;border-radius:10px;cursor:pointer;transition:.2s}
   .mode-toggle button.on{background:rgba(216,162,74,0.16);color:var(--gold)}
-  .btn-primary{border:0;border-radius:16px;padding:18px;font-family:var(--ar);font-weight:700;font-size:16px;cursor:pointer;color:#1c1306;
+  .btn-primary{border:0;border-radius:16px;padding:17px;font-family:inherit;font-weight:700;font-size:16px;cursor:pointer;color:#1c1306;
     background:linear-gradient(145deg,#E9BE63,#C9893A);box-shadow:0 10px 34px rgba(216,162,74,0.4);display:flex;align-items:center;justify-content:center;gap:10px}
   .btn-primary:active{transform:translateY(1px)}
-  .btn-ghost{border:1px solid var(--line);border-radius:14px;padding:14px;font-family:var(--ar);font-weight:600;font-size:14px;cursor:pointer;
-    color:var(--gold);background:rgba(216,162,74,0.08);transition:.2s}
+  .btn-ghost{border:1px solid var(--line);border-radius:14px;padding:13px;font-family:inherit;font-weight:600;font-size:14px;cursor:pointer;color:var(--gold);background:rgba(216,162,74,0.08)}
   .btn-ghost:active{transform:translateY(1px)}
-  #autobadge{position:absolute;z-index:22;top:max(96px,calc(env(safe-area-inset-top) + 84px));left:50%;transform:translateX(-50%);
-    display:flex;align-items:center;gap:8px;padding:8px 15px;border-radius:30px;font-size:12.5px;font-weight:600;color:var(--gold);
-    background:var(--glass-strong);border:1px solid rgba(216,162,74,0.4);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-  #autobadge .pulse{width:8px;height:8px;border-radius:50%;background:var(--gold);animation:pulse 1.4s ease-in-out infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   .fineprint{text-align:center;font-size:11.5px;color:var(--muted);line-height:1.6}
 
-  /* الشريط العلوي */
-  #topbar{position:absolute;top:0;left:0;right:0;z-index:20;padding:max(12px,env(safe-area-inset-top)) 12px 8px;pointer-events:none}
-  .compass{position:relative;height:34px;margin:0 auto 8px;max-width:520px;overflow:hidden;
-    -webkit-mask-image:linear-gradient(90deg,transparent,#000 16%,#000 84%,transparent);mask-image:linear-gradient(90deg,transparent,#000 16%,#000 84%,transparent)}
+  /* ===== الشريط العلوي ===== */
+  #topbar{position:absolute;top:0;inset-inline:0;z-index:20;padding:max(10px,env(safe-area-inset-top)) 12px 8px;pointer-events:none}
+  .toprow{display:flex;align-items:center;gap:8px;pointer-events:auto}
+  .toprow .mini{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--glass);color:var(--ink);display:grid;place-items:center;cursor:pointer;flex:none;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .toprow .mini svg{width:18px;height:18px}
+  .compass{position:relative;height:32px;flex:1;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent);mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)}
   .compass .tick{position:absolute;top:0;transform:translateX(-50%);text-align:center;will-change:left}
-  .compass .tick .bar{width:1px;height:9px;margin:0 auto;background:var(--line)}
-  .compass .tick.card .bar{height:13px;background:var(--ink)}
-  .compass .tick .lb{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px}
-  .compass .tick.card .lb{color:var(--ink);font-weight:600;font-size:13px}
-  .reticle-h{position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;height:17px;background:var(--gold);box-shadow:0 0 10px var(--gold)}
-  .hdg-readout{text-align:center;font-family:var(--mono);font-size:11px;color:var(--gold);letter-spacing:.05em;margin-bottom:8px}
-
-  .chips{display:flex;gap:8px;overflow-x:auto;padding:0 6px 8px;pointer-events:auto;scrollbar-width:none}
+  .compass .tick .bar{width:1px;height:8px;margin:0 auto;background:var(--line)}
+  .compass .tick.card .bar{height:12px;background:var(--ink)}
+  .compass .tick .lb{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px}
+  .compass .tick.card .lb{color:var(--ink);font-weight:600;font-size:12px}
+  .reticle-h{position:absolute;top:0;left:50%;transform:translateX(-50%);width:2px;height:15px;background:var(--gold);box-shadow:0 0 10px var(--gold)}
+  .hdg-readout{text-align:center;font-family:var(--mono);font-size:11px;color:var(--gold);letter-spacing:.05em;margin:6px 0 8px}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:0 2px 8px;pointer-events:auto;scrollbar-width:none}
   .chips::-webkit-scrollbar{display:none}
-  .chip{flex:none;display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:30px;cursor:pointer;font-size:13.5px;font-weight:600;white-space:nowrap;
+  .chip{flex:none;display:flex;align-items:center;gap:7px;padding:8px 15px;border-radius:30px;cursor:pointer;font-size:13.5px;font-weight:600;white-space:nowrap;
     border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:.2s}
   .chip .dot{width:8px;height:8px;border-radius:50%}
   .chip.on{border-color:transparent;color:#16110a}
@@ -99,187 +106,205 @@
   .chip[data-c="hotel"].on{background:var(--sky)}
   .chip[data-c="food"].on{background:var(--terra)}
   .chip[data-c="event"].on{background:var(--oasis)}
-
-  .livebar{display:flex;align-items:center;gap:8px;padding:0 6px;pointer-events:auto}
+  .livebar{display:flex;align-items:center;gap:8px;padding:0 2px;pointer-events:auto}
   .rad{display:flex;background:var(--glass);border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
   .rad button{border:0;background:transparent;color:var(--muted);font-family:var(--mono);font-size:11px;font-weight:600;padding:6px 9px;border-radius:8px;cursor:pointer}
   .rad button.on{background:rgba(216,162,74,0.2);color:var(--gold)}
   .status{flex:1;font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .status b{color:var(--oasis)}
-  .ref{width:32px;height:32px;border-radius:10px;border:1px solid var(--line);background:var(--glass);color:var(--ink);cursor:pointer;flex:none;font-size:16px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-  .ref.spin{animation:spin .8s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
 
-  /* طبقة AR */
+  /* ===== AR ===== */
   #ar{position:absolute;inset:0;z-index:10;pointer-events:none;touch-action:none}
-  .poi{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;will-change:left,top,transform;display:flex;flex-direction:column;align-items:center;gap:5px;transition:opacity .25s}
-  .poi .pin{display:flex;align-items:center;gap:8px;padding:8px 13px 8px 9px;border-radius:30px;background:var(--glass-strong);
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);box-shadow:0 8px 26px rgba(0,0,0,0.45)}
-  .poi .badge{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;color:#16110a}
-  .poi .badge svg{width:16px;height:16px}
-  .poi .meta b{font-size:13.5px;font-weight:600;display:block;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .poi .meta span{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
-  .poi .stem{width:1px;height:14px;background:linear-gradient(var(--line),transparent)}
+  .poi{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;will-change:left,top,transform;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .poi .pin{display:flex;align-items:center;gap:8px;padding:7px 13px 7px 8px;border-radius:30px;background:var(--glass-strong);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);box-shadow:0 8px 26px rgba(0,0,0,0.45)}
+  .poi .badge{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;color:#16110a}
+  .poi .badge svg{width:15px;height:15px}
+  .poi .meta b{font-size:13px;font-weight:600;display:block;max-width:36vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .poi .meta span{font-family:var(--mono);font-size:10px;color:var(--muted)}
+  .poi .stem{width:1px;height:13px;background:linear-gradient(var(--line),transparent)}
   .poi .anchor{width:9px;height:9px;border-radius:50%;border:2px solid var(--ink);box-shadow:0 0 0 4px rgba(0,0,0,0.25)}
   .poi.dim{opacity:.42}
   .poi.hit .pin{outline:2px solid var(--gold);outline-offset:2px}
-
-  .edge{position:absolute;top:50%;transform:translateY(-50%);z-index:12;pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:6px;
-    padding:8px 11px;border-radius:12px;background:var(--glass-strong);border:1px solid var(--line);font-family:var(--mono);font-size:11px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .edge{position:absolute;top:50%;transform:translateY(-50%);z-index:12;pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 11px;border-radius:12px;background:var(--glass-strong);border:1px solid var(--line);font-family:var(--mono);font-size:11px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   #edgeL{left:8px}#edgeR{right:8px}
   .edge svg{width:14px;height:14px;color:var(--gold)}
 
-  /* الرادار */
-  #radar{position:absolute;z-index:18;bottom:calc(env(safe-area-inset-bottom) + 96px);right:14px;width:96px;height:96px;border-radius:50%;pointer-events:none;
-    background:radial-gradient(circle,rgba(20,16,12,0.7),rgba(20,16,12,0.42));border:1px solid var(--line);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-  #radar .ring{position:absolute;inset:18px;border:1px solid var(--line);border-radius:50%}
-  #radar .ring2{position:absolute;inset:34px;border:1px solid var(--line);border-radius:50%}
-  #radar .cone{position:absolute;left:50%;top:50%;width:0;height:0;border-left:26px solid transparent;border-right:26px solid transparent;
-    border-bottom:48px solid rgba(216,162,74,0.18);transform-origin:50% 100%;transform:translate(-50%,-100%)}
+  #radar{position:absolute;z-index:18;bottom:calc(env(safe-area-inset-bottom) + 96px);inset-inline-end:14px;width:92px;height:92px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(20,16,12,0.7),rgba(20,16,12,0.42));border:1px solid var(--line);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  #radar .ring{position:absolute;inset:17px;border:1px solid var(--line);border-radius:50%}
+  #radar .ring2{position:absolute;inset:33px;border:1px solid var(--line);border-radius:50%}
+  #radar .cone{position:absolute;left:50%;top:50%;width:0;height:0;border-left:25px solid transparent;border-right:25px solid transparent;border-bottom:46px solid rgba(216,162,74,0.18);transform-origin:50% 100%;transform:translate(-50%,-100%)}
   #radar .me{position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;background:var(--gold);transform:translate(-50%,-50%);box-shadow:0 0 8px var(--gold)}
-  #radar .blip{position:absolute;width:6px;height:6px;border-radius:50%;transform:translate(-50%,-50%)}
+  #radar .blip{position:absolute;width:6px;height:6px;border-radius:50%;transform:translate(-50%,-50%);will-change:left,top}
   #radar .nlabel{position:absolute;top:3px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:9px;color:var(--muted)}
 
-  /* الشريط السفلي */
-  #dock{position:absolute;left:0;right:0;bottom:0;z-index:20;padding:10px 16px max(14px,env(safe-area-inset-bottom));display:flex;align-items:center;justify-content:center;gap:14px}
+  #dock{position:absolute;inset-inline:0;bottom:0;z-index:20;padding:10px 16px max(14px,env(safe-area-inset-bottom));display:flex;align-items:center;justify-content:center;gap:14px}
   .dbtn{width:50px;height:50px;border-radius:16px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:var(--ink);cursor:pointer;display:grid;place-items:center;transition:.18s}
   .dbtn:active{transform:scale(.94)}
   .dbtn svg{width:22px;height:22px}
-  .dbtn.label{width:auto;padding:0 16px;gap:8px;font-family:var(--ar);font-weight:600;font-size:13px;display:flex;align-items:center}
-  .shutter{width:68px;height:68px;border-radius:50%;border:3px solid rgba(244,238,227,0.85);background:rgba(244,238,227,0.12);position:relative;cursor:pointer}
+  .shutter{width:66px;height:66px;border-radius:50%;border:3px solid rgba(244,238,227,0.85);background:rgba(244,238,227,0.12);position:relative;cursor:pointer}
   .shutter::after{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--ink);transition:.12s}
   .shutter:active::after{inset:11px}
 
-  /* البحث */
-  #search{position:absolute;top:max(10px,env(safe-area-inset-top));left:12px;right:12px;z-index:30;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:16px;
-    background:var(--glass-strong);border:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+  #search{position:absolute;top:max(10px,env(safe-area-inset-top));inset-inline:12px;z-index:30;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:16px;background:var(--glass-strong);border:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
   #search svg{width:19px;height:19px;color:var(--muted);flex:none}
-  #search input{flex:1;background:transparent;border:0;outline:0;color:var(--ink);font-family:var(--ar);font-size:15px}
+  #search input{flex:1;background:transparent;border:0;outline:0;color:var(--ink);font-family:inherit;font-size:15px;text-align:start}
   #search input::placeholder{color:var(--muted)}
   #search .x{width:32px;height:32px;border-radius:10px;border:0;background:rgba(244,238,227,0.08);color:var(--ink);cursor:pointer;flex:none}
 
-  /* ورقة التفاصيل */
-  #sheet{position:absolute;left:0;right:0;bottom:0;z-index:40;transform:translateY(110%);transition:transform .34s cubic-bezier(.22,1,.36,1);
-    background:var(--glass-strong);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid var(--line);border-radius:24px 24px 0 0;
-    padding:10px 20px max(20px,env(safe-area-inset-bottom));box-shadow:0 -20px 60px rgba(0,0,0,0.5);max-height:86vh;overflow-y:auto}
+  /* ===== ورقة التفاصيل ===== */
+  #sheet{position:absolute;inset-inline:0;bottom:0;z-index:40;transform:translateY(110%);transition:transform .34s cubic-bezier(.22,1,.36,1);background:var(--glass-strong);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid var(--line);border-radius:24px 24px 0 0;box-shadow:0 -20px 60px rgba(0,0,0,0.5);max-height:88vh;overflow-y:auto}
   #sheet.up{transform:translateY(0)}
-  .grab{width:42px;height:5px;border-radius:3px;background:var(--line);margin:4px auto 14px}
-  .sheet-head{display:flex;align-items:flex-start;gap:13px;margin-bottom:4px}
-  .sheet-head .badge{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;flex:none;color:#16110a}
-  .sheet-head .badge svg{width:22px;height:22px}
-  .sheet-head .ttl{flex:1;min-width:0}
-  .sheet-head .cat{font-size:11.5px;font-weight:600;margin-bottom:3px}
-  .sheet-head h2{font-size:21px;font-weight:700;line-height:1.2}
-  .sheet-head h2 small{display:block;font-family:var(--disp);font-weight:500;font-size:12px;color:var(--muted);letter-spacing:.04em;margin-top:3px}
-  .closeS{width:34px;height:34px;border-radius:11px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;flex:none}
-  .stats{display:flex;gap:8px;margin:14px 0}
-  .stat{flex:1;background:rgba(244,238,227,0.05);border:1px solid var(--line);border-radius:13px;padding:11px}
-  .stat .k{font-family:var(--mono);font-size:9.5px;color:var(--muted);letter-spacing:.04em}
-  .stat .v{font-family:var(--mono);font-size:15px;font-weight:600;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hero{position:relative;height:158px;border-radius:24px 24px 0 0;overflow:hidden;background:#2a2018}
+  .hero .ph{position:absolute;inset:0;display:grid;place-items:center}
+  .hero .ph svg{width:54px;height:54px;opacity:.5}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .5s}
+  .hero img.on{opacity:1}
+  .hero .ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,11,8,0.1),rgba(15,11,8,0.92))}
+  .hero .grab{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:42px;height:5px;border-radius:3px;background:rgba(244,238,227,0.6)}
+  .hero .closeS{position:absolute;top:12px;inset-inline-end:12px;width:34px;height:34px;border-radius:11px;border:0;background:rgba(0,0,0,0.4);color:#fff;cursor:pointer;backdrop-filter:blur(6px)}
+  .hero .htitle{position:absolute;inset-inline:18px;bottom:12px}
+  .hero .cat{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;color:#16110a;margin-bottom:7px}
+  .hero h2{font-size:22px;font-weight:700;color:#fff;line-height:1.2;text-shadow:0 2px 12px rgba(0,0,0,0.5)}
+  .hero h2 small{display:block;font-family:var(--disp);font-weight:500;font-size:11.5px;color:#E8DDCB;margin-top:3px}
+  .sheet-body{padding:14px 20px max(20px,env(safe-area-inset-bottom))}
+  .stats{display:flex;gap:8px;margin-bottom:14px}
+  .stat{flex:1;background:rgba(244,238,227,0.05);border:1px solid var(--line);border-radius:13px;padding:10px}
+  .stat .k{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+  .stat .v{font-family:var(--mono);font-size:14px;font-weight:600;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .stat .v.rate{color:var(--gold)}
-  .desc{font-size:14px;line-height:1.8;color:#E4DCCC;margin-bottom:16px}
-  .actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-  .act{display:flex;align-items:center;justify-content:center;gap:9px;padding:14px;border-radius:14px;font-family:var(--ar);font-weight:600;font-size:14px;cursor:pointer;
-    border:1px solid var(--line);background:rgba(244,238,227,0.05);color:var(--ink);text-decoration:none;transition:.18s}
+  .infoblock{margin-bottom:13px}
+  .infoblock h4{font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.04em;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:7px}
+  .infoblock h4 svg{width:14px;height:14px}
+  .infoblock p{font-size:13.5px;line-height:1.7;color:#E4DCCC}
+  .credit{font-size:9.5px;color:var(--muted);margin-top:2px}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:6px}
+  .act{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:14px;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer;border:1px solid var(--line);background:rgba(244,238,227,0.05);color:var(--ink);text-decoration:none;transition:.18s}
   .act:active{transform:scale(.98)}
-  .act svg{width:18px;height:18px;flex:none}
+  .act svg{width:17px;height:17px;flex:none}
   .act.go{grid-column:1 / -1;background:linear-gradient(145deg,#E9BE63,#C9893A);color:#1c1306;border-color:transparent}
-  .act .src{font-family:var(--disp);font-size:10px;letter-spacing:.06em;opacity:.7}
+  .act .src{font-family:var(--disp);font-size:9px;letter-spacing:.05em;opacity:.7}
 
-  /* القائمة */
-  #list{position:absolute;inset:0;z-index:35;background:linear-gradient(180deg,#15110D,#221913);overflow-y:auto;
-    padding:max(14px,env(safe-area-inset-top)) 16px max(20px,env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .34s}
-  #list.up{transform:translateY(0)}
-  .list-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-  .list-top h3{font-size:20px;font-weight:700}
-  .lcard{display:flex;align-items:center;gap:13px;padding:13px;border-radius:16px;margin-bottom:9px;background:rgba(244,238,227,0.04);border:1px solid var(--line);cursor:pointer}
-  .lcard .badge{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;flex:none;color:#16110a}
-  .lcard .badge svg{width:22px;height:22px}
+  /* ===== القائمة + الخريطة ===== */
+  .screen{position:absolute;inset:0;z-index:35;background:linear-gradient(180deg,#15110D,#221913);transform:translateY(100%);transition:transform .34s}
+  .screen.up{transform:translateY(0)}
+  .scr-top{display:flex;align-items:center;justify-content:space-between;padding:max(14px,env(safe-area-inset-top)) 16px 12px}
+  .scr-top h3{font-size:19px;font-weight:700}
+  .scr-top .close{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(244,238,227,0.06);color:var(--ink);font-family:inherit;font-weight:600;font-size:13px;cursor:pointer}
+  .scr-top .close svg{width:17px;height:17px}
+  #listBody{overflow-y:auto;padding:0 16px max(20px,env(safe-area-inset-bottom));height:calc(100% - 64px)}
+  .lcard{display:flex;align-items:center;gap:12px;padding:10px;border-radius:16px;margin-bottom:9px;background:rgba(244,238,227,0.04);border:1px solid var(--line);cursor:pointer}
+  .lthumb{width:54px;height:54px;border-radius:12px;flex:none;overflow:hidden;position:relative;display:grid;place-items:center}
+  .lthumb svg{width:24px;height:24px;color:#16110a}
+  .lthumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s}
+  .lthumb img.on{opacity:1}
   .lcard .info{flex:1;min-width:0}
   .lcard .info b{font-size:15px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .lcard .info .sub{display:flex;gap:10px;margin-top:4px;font-family:var(--mono);font-size:11px;color:var(--muted)}
   .lcard .arrow{font-family:var(--mono);font-size:12px;color:var(--gold);text-align:center;flex:none}
   .lcard .arrow .deg{display:block;font-size:9px;margin-top:2px;color:var(--muted)}
+  #mapbox{height:calc(100% - 64px);width:100%}
+  .leaflet-container{background:#1a140e}
 
-  /* معاينة الصورة */
   #shot{position:absolute;inset:0;z-index:60;background:rgba(8,6,4,0.92);display:none;flex-direction:column;padding:max(20px,env(safe-area-inset-top)) 20px max(20px,env(safe-area-inset-bottom))}
   #shot img{flex:1;width:100%;object-fit:contain;border-radius:18px;border:1px solid var(--line);min-height:0}
   #shot .row{display:flex;gap:10px;margin-top:16px}
-  #shot .row a,#shot .row button{flex:1;text-align:center;text-decoration:none;padding:15px;border-radius:14px;font-family:var(--ar);font-weight:600;font-size:14px;cursor:pointer;
-    border:1px solid var(--line);background:rgba(244,238,227,0.06);color:var(--ink);display:flex;align-items:center;justify-content:center;gap:8px}
+  #shot .row a,#shot .row button{flex:1;text-align:center;text-decoration:none;padding:15px;border-radius:14px;font-family:inherit;font-weight:600;font-size:14px;cursor:pointer;border:1px solid var(--line);background:rgba(244,238,227,0.06);color:var(--ink);display:flex;align-items:center;justify-content:center;gap:8px}
   #shot .row .save{background:linear-gradient(145deg,#E9BE63,#C9893A);color:#1c1306;border-color:transparent}
+  #shot .row .soc{padding:11px;font-size:12px;gap:6px}
 
-  /* محمّل الحالة */
-  #loader{position:absolute;inset:0;z-index:48;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:rgba(10,7,4,0.55);backdrop-filter:blur(4px)}
+  #loader{position:absolute;inset:0;z-index:48;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,7,4,0.55);backdrop-filter:blur(4px)}
   #loader .card{display:flex;flex-direction:column;align-items:center;gap:16px;padding:26px 30px;border-radius:20px;background:var(--glass-strong);border:1px solid var(--line);max-width:80vw;text-align:center}
   .spinner{width:38px;height:38px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--gold);animation:spin .8s linear infinite}
-  #loaderText{font-size:14px;line-height:1.6;color:var(--ink)}
-  #loaderRetry{border:0;border-radius:12px;padding:12px 22px;font-family:var(--ar);font-weight:700;font-size:14px;cursor:pointer;color:#1c1306;background:linear-gradient(145deg,#E9BE63,#C9893A)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loaderText{font-size:14px;line-height:1.6}
+  #loaderRetry{border:0;border-radius:12px;padding:12px 22px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;color:#1c1306;background:linear-gradient(145deg,#E9BE63,#C9893A)}
 
-  #toast{position:absolute;z-index:45;left:50%;bottom:calc(env(safe-area-inset-bottom) + 150px);transform:translateX(-50%) translateY(20px);
-    background:var(--glass-strong);border:1px solid var(--line);border-radius:14px;padding:11px 16px;font-size:13px;color:var(--ink);opacity:0;transition:.3s;pointer-events:none;max-width:84vw;text-align:center;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  /* ===== قائمة اللغات ===== */
+  #langsheet{position:absolute;inset:0;z-index:58;display:none;align-items:flex-end;background:rgba(8,6,4,0.6);backdrop-filter:blur(4px)}
+  #langsheet .panel{width:100%;background:var(--glass-strong);border-top:1px solid var(--line);border-radius:24px 24px 0 0;padding:14px 18px max(20px,env(safe-area-inset-bottom));backdrop-filter:blur(22px)}
+  #langsheet .grab{width:42px;height:5px;border-radius:3px;background:var(--line);margin:2px auto 14px}
+  #langsheet h3{font-size:16px;font-weight:700;margin-bottom:12px;text-align:start}
+  .langrow{display:flex;align-items:center;justify-content:space-between;padding:14px 14px;border-radius:13px;margin-bottom:7px;border:1px solid var(--line);background:rgba(244,238,227,0.04);cursor:pointer}
+  .langrow.on{border-color:var(--gold);background:rgba(216,162,74,0.12)}
+  .langrow b{font-size:15px;font-weight:600}
+  .langrow span{font-size:12px;color:var(--muted)}
+  .langrow .ck{color:var(--gold);opacity:0}
+  .langrow.on .ck{opacity:1}
+
+  #autobadge{position:absolute;z-index:22;top:max(150px,calc(env(safe-area-inset-top) + 138px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 15px;border-radius:30px;font-size:12.5px;font-weight:600;color:var(--gold);background:var(--glass-strong);border:1px solid rgba(216,162,74,0.4);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  #autobadge .pulse{width:8px;height:8px;border-radius:50%;background:var(--gold);animation:pulse 1.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  #toast{position:absolute;z-index:45;left:50%;bottom:calc(env(safe-area-inset-bottom) + 150px);transform:translateX(-50%) translateY(20px);background:var(--glass-strong);border:1px solid var(--line);border-radius:14px;padding:11px 16px;font-size:13px;color:var(--ink);opacity:0;transition:.3s;pointer-events:none;max-width:84vw;text-align:center;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   #flash{position:absolute;inset:0;z-index:55;background:#fff;opacity:0;pointer-events:none}
   @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
 </style>
 </head>
-<body>
+<body data-lang="en">
 <div id="app">
   <video id="cam" autoplay playsinline muted></video>
   <div id="backdrop"></div>
   <div id="scrim"></div>
   <div id="flash"></div>
 
+  <!-- شريط اللغة -->
+  <div id="langbar">
+    <button class="langbtn" id="langOpen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></svg><span id="langCur">English</span></button>
+  </div>
+
   <!-- البداية -->
   <section id="intro">
     <div class="brand">
       <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#2a1c08" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 L19 21 L12 17 L5 21 Z"/></svg></div>
-      <div class="wm"><b>ALULA · AR</b><span>عدسة العلا</span></div>
+      <div class="wm"><b>ALULA · AR</b><span data-i18n="brand">AlUla Lens</span></div>
     </div>
     <div class="intro-hero">
-      <h1>وجّه كاميرتك،<br>وستظهر <em>الأماكن الحقيقية</em> حولك.</h1>
-      <p>تجربة حيّة: نقرأ موقعك الفعلي، ونجلب لك الآثار والفنادق والمطاعم والحدائق الحقيقية المحيطة بك مباشرةً، مع روابطها الفعلية على خرائط Google و Tripadvisor.</p>
+      <h1 data-i18n="heroTitle"></h1>
+      <p data-i18n="heroSub"></p>
       <div class="perm-list">
-        <div class="perm"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div><div class="tx"><b>الكاميرا</b><span>لعرض المعالم فوق المشهد الحقيقي</span></div></div>
-        <div class="perm"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="tx"><b>الموقع</b><span>لجلب الأماكن الحقيقية القريبة منك</span></div></div>
-        <div class="perm"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16 8 11 13 8 16 13 11"/></svg></div><div class="tx"><b>البوصلة</b><span>لتثبيت كل مكان في اتجاهه الصحيح</span></div></div>
+        <div class="perm"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div><div class="tx"><b data-i18n="permCamT"></b><span data-i18n="permCamD"></span></div></div>
+        <div class="perm"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="tx"><b data-i18n="permLocT"></b><span data-i18n="permLocD"></span></div></div>
+        <div class="perm"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16 8 11 13 8 16 13 11"/></svg></div><div class="tx"><b data-i18n="permCompT"></b><span data-i18n="permCompD"></span></div></div>
       </div>
     </div>
     <div class="start-zone">
       <div class="mode-toggle" id="modeToggle">
-        <button data-mode="live" class="on">تجربة حيّة (موقعي)</button>
-        <button data-mode="demo">جولة العلا</button>
+        <button data-mode="live" class="on" data-i18n="modeLive"></button>
+        <button data-mode="demo" data-i18n="modeTour"></button>
       </div>
-      <button class="btn-primary" id="startBtn">ابدأ التجربة
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#2a1c08" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <button class="btn-primary" id="startBtn"><span data-i18n="startBtn"></span>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#2a1c08" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
-      <button class="btn-ghost" id="autoBtn">▶ تشغيل العرض التلقائي — للعرض على الإدارة</button>
-      <button class="btn-ghost hidden" id="installBtn">⬇ تثبيت التطبيق على الشاشة الرئيسية</button>
-      <p class="fineprint">للتجربة الكاملة بالكاميرا والبوصلة، نزّل الملف وافتحه على هاتفك. «جولة العلا» تضعك في الواحة لمعاينة الفكرة من أي مكان.</p>
-      <p class="fineprint" id="envNote" style="display:none;color:var(--terra);border:1px solid rgba(224,138,91,0.4);border-radius:12px;padding:11px 13px;line-height:1.7"></p>
+      <button class="btn-ghost" id="autoBtn" data-i18n="autoBtn"></button>
+      <button class="btn-ghost hidden" id="installBtn" data-i18n="installBtn"></button>
+      <p class="fineprint" data-i18n="fineprint"></p>
     </div>
   </section>
 
   <!-- البحث -->
   <div id="search" class="hidden">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-    <input id="searchInput" placeholder="ابحث باسم معلم أو فندق أو مطعم…" />
+    <input id="searchInput" data-i18n-ph="searchPh" />
     <button class="x" id="searchClose">✕</button>
   </div>
 
   <!-- الشريط العلوي -->
   <div id="topbar" class="hidden">
-    <div class="compass" id="compass"><div class="reticle-h"></div></div>
+    <div class="toprow">
+      <button class="mini" id="langMini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></svg></button>
+      <div class="compass" id="compass"><div class="reticle-h"></div></div>
+      <div style="width:38px;flex:none"></div>
+    </div>
     <div class="hdg-readout" id="hdgReadout">—</div>
     <div class="chips" id="chips"></div>
     <div class="livebar">
       <div class="rad" id="rad">
-        <button data-r="1000">١ كم</button>
-        <button data-r="3000" class="on">٣ كم</button>
-        <button data-r="12000">١٢ كم</button>
+        <button data-r="1000" class="num">1</button>
+        <button data-r="3000" class="on num">3</button>
+        <button data-r="12000" class="num">12</button>
       </div>
       <span class="status" id="statusPill">—</span>
-      <button class="ref" id="btnRefresh" title="تحديث">⟳</button>
     </div>
   </div>
 
@@ -289,129 +314,444 @@
     <div class="edge hidden" id="edgeR"><span id="edgeRn">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
   </div>
 
-  <!-- الرادار -->
-  <div id="radar" class="hidden">
-    <div class="nlabel">ش</div><div class="ring"></div><div class="ring2"></div>
-    <div class="cone" id="radarCone"></div><div class="me"></div>
-  </div>
+  <div id="radar" class="hidden"><div class="nlabel" id="radarN">N</div><div class="ring"></div><div class="ring2"></div><div class="cone" id="radarCone"></div><div class="me"></div></div>
 
   <!-- الشريط السفلي -->
   <div id="dock" class="hidden">
-    <button class="dbtn" id="btnSearch" title="بحث"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
-    <div class="shutter" id="shutter" title="التقاط"></div>
-    <button class="dbtn" id="btnList" title="قائمة"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1.3"/><circle cx="3.5" cy="12" r="1.3"/><circle cx="3.5" cy="18" r="1.3"/></svg></button>
+    <button class="dbtn" id="btnSearch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
+    <button class="dbtn" id="btnMap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 8 3 16 6 23 3 23 18 16 21 8 18 1 21 1 6"/><line x1="8" y1="3" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="21"/></svg></button>
+    <div class="shutter" id="shutter"></div>
+    <button class="dbtn" id="btnList"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1.3"/><circle cx="3.5" cy="12" r="1.3"/><circle cx="3.5" cy="18" r="1.3"/></svg></button>
+    <button class="dbtn" id="btnTours"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.4 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.6"/></svg></button>
   </div>
 
   <!-- التفاصيل -->
   <section id="sheet">
-    <div class="grab"></div>
-    <div class="sheet-head">
-      <div class="badge" id="sBadge"></div>
-      <div class="ttl"><div class="cat" id="sCat"></div><h2 id="sName"></h2></div>
+    <div class="hero" id="sHero">
+      <div class="ph" id="sPh"></div>
+      <img id="sImg" alt="" />
+      <div class="ov"></div>
+      <div class="grab"></div>
       <button class="closeS" id="sheetClose">✕</button>
+      <button class="closeS" id="sSpeak" style="inset-inline-start:12px;inset-inline-end:auto"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg></button>
+      <div class="htitle"><span class="cat" id="sCat"></span><h2 id="sName"></h2></div>
     </div>
-    <div class="stats">
-      <div class="stat"><div class="k">المسافة</div><div class="v" id="sDist">—</div></div>
-      <div class="stat"><div class="k">الاتجاه</div><div class="v" id="sBear">—</div></div>
-      <div class="stat"><div class="k" id="sExtraK">الفئة</div><div class="v" id="sExtra">—</div></div>
+    <div class="sheet-body">
+      <div class="stats">
+        <div class="stat"><div class="k" data-i18n="stDist"></div><div class="v" id="sDist">—</div></div>
+        <div class="stat"><div class="k" data-i18n="stBear"></div><div class="v" id="sBear">—</div></div>
+        <div class="stat"><div class="k" id="sExtraK"></div><div class="v" id="sExtra">—</div></div>
+      </div>
+      <div class="infoblock" id="sAboutBlock">
+        <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span data-i18n="about"></span></h4>
+        <p id="sAbout"></p>
+        <p class="credit hidden" id="sCredit"></p>
+      </div>
+      <div class="infoblock hidden" id="sTipBlock">
+        <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg><span data-i18n="tip"></span></h4>
+        <p id="sTip"></p>
+      </div>
+      <div class="actions" id="actions"></div>
     </div>
-    <p class="desc" id="sDesc"></p>
-    <div class="actions" id="actions"></div>
   </section>
 
   <!-- القائمة -->
-  <section id="list">
-    <div class="list-top"><h3>كل الأماكن حولك</h3>
-      <button class="dbtn label" id="listClose" style="background:rgba(244,238,227,0.06)">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>الكاميرا
-      </button>
+  <section id="list" class="screen">
+    <div class="scr-top"><h3 data-i18n="listTitle"></h3>
+      <button class="close" id="listClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span data-i18n="cameraBtn"></span></button>
     </div>
     <div id="listBody"></div>
   </section>
 
-  <!-- الصورة -->
-  <section id="shot">
-    <img id="shotImg" alt="لقطة" />
-    <div class="row"><button id="shotClose">إغلاق</button><a class="save" id="shotSave" download="alula-ar.png">حفظ الصورة</a></div>
+  <!-- الخريطة -->
+  <section id="mapscr" class="screen">
+    <div class="scr-top"><h3 data-i18n="mapTitle"></h3>
+      <button class="close" id="mapClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span data-i18n="cameraBtn"></span></button>
+    </div>
+    <div id="mapbox"></div>
   </section>
 
-  <!-- المحمّل -->
-  <div id="loader">
-    <div class="card">
-      <div class="spinner" id="loaderSpin"></div>
-      <div id="loaderText">…</div>
-      <button id="loaderRetry" class="hidden">إعادة المحاولة</button>
+  <!-- المسارات -->
+  <section id="tours" class="screen">
+    <div class="scr-top"><h3 id="toursHead" data-i18n="tours"></h3>
+      <button class="close" id="toursClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span data-i18n="cameraBtn"></span></button>
     </div>
+    <div id="toursBody" style="overflow-y:auto;padding:0 16px max(20px,env(safe-area-inset-bottom));height:calc(100% - 64px)"></div>
+  </section>
+
+  <!-- الصورة -->
+  <section id="shot">
+    <img id="shotImg" alt="" />
+    <div class="row" style="gap:8px"><button id="shareIG" class="soc"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>Instagram</button>
+      <button id="shareTT" class="soc"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M16 3v9.5a4 4 0 1 1-3-3.9V6.5A6.5 6.5 0 0 0 16 9V3z"/></svg>TikTok</button>
+      <button id="shareFB" class="soc"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V6.5A1.5 1.5 0 0 1 15.5 5H17V2h-3a4 4 0 0 0-4 4v3H7v3h3v9h3v-9h2.5l.5-3z"/></svg>Facebook</button>
+      <button id="shareX" class="soc"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l16 16M20 4L4 20"/></svg>X</button>
+    </div>
+    <div class="row"><button id="shotClose" data-i18n="close"></button><a class="save" id="shotSave" download="alula-ar.png" data-i18n="save"></a></div>
+  </section>
+
+  <!-- اللغات -->
+  <div id="langsheet">
+    <div class="panel"><div class="grab"></div><h3 data-i18n="chooseLang"></h3><div id="langList"></div></div>
   </div>
 
-  <div id="autobadge" class="hidden"><span class="pulse"></span>عرض تلقائي — المس للتحكم اليدوي</div>
+  <!-- المحمّل -->
+  <div id="loader"><div class="card"><div class="spinner" id="loaderSpin"></div><div id="loaderText">…</div><button id="loaderRetry" class="hidden" data-i18n="retry"></button></div></div>
+
+  <div id="autobadge" class="hidden"><span class="pulse"></span><span data-i18n="autoBadge"></span></div>
   <div id="toast"></div>
 </div>
 <canvas id="capCanvas" style="display:none"></canvas>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ===== الفئات ===== */
-const CATS = {
-  heritage:{ar:'آثار وتراث',color:'var(--gold)',hex:'#D8A24A',icon:'<path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/>'},
-  hotel:{ar:'فنادق ومنتجعات',color:'var(--sky)',hex:'#6FA3C7',icon:'<path d="M3 21V7l9-4 9 4v14M3 21h18M8 21v-4h8v4M7 11h.01M12 11h.01M17 11h.01"/>'},
-  food:{ar:'مطاعم ومقاهي',color:'var(--terra)',hex:'#E08A5B',icon:'<path d="M4 3v7a3 3 0 0 0 6 0V3M7 3v18M21 3v18M21 9c-2 0-3-1-3-4 0-2 1-2 3-2"/>'},
-  event:{ar:'متنزهات وتجارب',color:'var(--oasis)',hex:'#8FB98A',icon:'<path d="M12 2v6M12 8c-3 0-5 2-5 5h10c0-3-2-5-5-5zM7 13c-2 1-3 3-3 6h16c0-3-1-5-3-6M12 22v-3"/>'}
+/* ================= اللغات ================= */
+const LANGS={
+  en:{name:"English",native:"English",dir:"ltr",cardinals:["N","NE","E","SE","S","SW","W","NW"],card4:{0:"N",90:"E",180:"S",270:"W"},
+    t:{brand:"AlUla Lens",heroTitle:'Point your camera at AlUla — <em>the story appears.</em>',heroSub:"A live AR guide: it reads where you are and what your camera faces, then floats the real heritage, hotels, dining and experiences around you — with reviews, directions and booking.",
+    permCamT:"Camera",permCamD:"To overlay places on the real view",permLocT:"Location",permLocD:"To fetch real places nearby",permCompT:"Compass",permCompD:"To anchor each place in its true direction",
+    modeLive:"Live (my location)",modeTour:"AlUla tour",startBtn:"Start experience",autoBtn:"▶ Auto presentation — for stakeholders",installBtn:"⬇ Install app",installIOS:"⬇ Install: Share button → Add to Home Screen",
+    fineprint:"For the full camera + compass experience, open on your phone. “AlUla tour” places you in the oasis to preview from anywhere.",
+    searchPh:"Search a place by name…",catAll:"All",catHeritage:"Heritage",catHotel:"Hotels",catFood:"Dining",catEvent:"Experiences",
+    statusLive:(n,r)=>`<b>${n}</b> real places within ${r}`,statusTour:"<b>AlUla tour</b> — 14 highlights",
+    loading:"Finding real places around you…",locating:"Locating you…",empty:r=>`No mapped places within ${r}. Widen the range and retry.`,error:"Couldn't load places. Check your connection and retry.",retry:"Try again",
+    stDist:"Distance",stBear:"Bearing",rating:"Rating",type:"Type",about:"About",tip:"Visitor tip",hours:"Hours",
+    gReviews:"Google reviews",tripadvisor:"Tripadvisor",website:"Website",call:"Call",directions:"Get directions",
+    listTitle:"Everything around you",mapTitle:"Map",cameraBtn:"Camera",close:"Close",save:"Save photo",chooseLang:"Choose language",
+    autoBadge:"Auto demo — tap to take control",dragHint:"Swipe left/right on screen to look around",manual:"Manual control — swipe to look around",
+    camHttps:"Camera needs an HTTPS link",camDenied:"Camera permission denied — enable it in settings",camNone:"No camera on this device",camFail:"Camera unavailable — showing the desert horizon",
+    geoHttps:"Location needs HTTPS — AlUla tour enabled",geoDenied:"Location denied — enable it in settings",geoFail:"Couldn't locate you — AlUla tour enabled",noGeo:"Device has no location — AlUla tour enabled",
+    turn:(name,deg)=>`turn ${deg}° to your ${name}`,left:"left",right:"right",mapNet:"Map needs an internet connection",credit:"Photo via Wikipedia"}},
+  ar:{name:"Arabic",native:"العربية",dir:"rtl",cardinals:["شمال","شمال شرق","شرق","جنوب شرق","جنوب","جنوب غرب","غرب","شمال غرب"],card4:{0:"ش",90:"ق",180:"ج",270:"غ"},
+    t:{brand:"عدسة العلا",heroTitle:'وجّه كاميرتك نحو العلا — <em>فتظهر القصة.</em>',heroSub:"دليل حيّ بالواقع المعزّز: يقرأ موقعك واتجاه كاميرتك، فتطفو حولك الآثار والفنادق والمطاعم والتجارب الحقيقية، مع التقييمات والاتجاهات والحجز.",
+    permCamT:"الكاميرا",permCamD:"لعرض المعالم فوق المشهد الحقيقي",permLocT:"الموقع",permLocD:"لجلب الأماكن الحقيقية القريبة",permCompT:"البوصلة",permCompD:"لتثبيت كل مكان في اتجاهه الصحيح",
+    modeLive:"تجربة حيّة (موقعي)",modeTour:"جولة العلا",startBtn:"ابدأ التجربة",autoBtn:"▶ عرض تلقائي — للعرض على الإدارة",installBtn:"⬇ تثبيت التطبيق",installIOS:"⬇ للتثبيت: زر المشاركة ثم «إضافة إلى الشاشة الرئيسية»",
+    fineprint:"للتجربة الكاملة بالكاميرا والبوصلة، افتح التطبيق على هاتفك. «جولة العلا» تضعك في الواحة لمعاينة الفكرة من أي مكان.",
+    searchPh:"ابحث باسم معلم أو فندق أو مطعم…",catAll:"الكل",catHeritage:"آثار وتراث",catHotel:"فنادق",catFood:"مطاعم",catEvent:"تجارب",
+    statusLive:(n,r)=>`<b>${n}</b> مكاناً حقيقياً ضمن ${r}`,statusTour:"<b>جولة العلا</b> — 14 معلماً",
+    loading:"نبحث عن الأماكن الحقيقية حولك…",locating:"نحدّد موقعك…",empty:r=>`لا أماكن مسجّلة ضمن ${r}. وسّع النطاق ثم حدّث.`,error:"تعذّر جلب الأماكن. تحقّق من اتصالك وحاول مجدداً.",retry:"إعادة المحاولة",
+    stDist:"المسافة",stBear:"الاتجاه",rating:"التقييم",type:"النوع",about:"نبذة",tip:"نصيحة للزائر",hours:"ساعات العمل",
+    gReviews:"تقييمات Google",tripadvisor:"Tripadvisor",website:"الموقع",call:"اتصال",directions:"الاتجاهات",
+    listTitle:"كل الأماكن حولك",mapTitle:"الخريطة",cameraBtn:"الكاميرا",close:"إغلاق",save:"حفظ الصورة",chooseLang:"اختر اللغة",
+    autoBadge:"عرض تلقائي — المس للتحكم",dragHint:"حرّك إصبعك يميناً ويساراً للالتفات",manual:"تحكم يدوي — حرّك إصبعك للالتفات",
+    camHttps:"الكاميرا تحتاج رابط HTTPS",camDenied:"رُفض إذن الكاميرا — فعّله من الإعدادات",camNone:"لا توجد كاميرا على هذا الجهاز",camFail:"الكاميرا غير متاحة — نعرض أفق الصحراء",
+    geoHttps:"الموقع يحتاج HTTPS — تم تفعيل جولة العلا",geoDenied:"رُفض إذن الموقع — فعّله من الإعدادات",geoFail:"تعذّر تحديد موقعك — تم تفعيل جولة العلا",noGeo:"الجهاز لا يدعم الموقع — تم تفعيل جولة العلا",
+    turn:(name,deg)=>`التفت ${deg}° نحو ${name}`,left:"يسارك",right:"يمينك",mapNet:"الخريطة تحتاج اتصالاً بالإنترنت",credit:"الصورة عبر ويكيبيديا"}},
+  fr:{name:"French",native:"Français",dir:"ltr",cardinals:["N","NE","E","SE","S","SO","O","NO"],card4:{0:"N",90:"E",180:"S",270:"O"},
+    t:{brand:"AlUla Lens",heroTitle:'Pointez la caméra vers AlUla — <em>l\'histoire apparaît.</em>',heroSub:"Un guide AR en direct : il lit votre position et l\'orientation de la caméra, puis fait apparaître autour de vous le patrimoine, les hôtels, les restaurants et les expériences réels — avec avis, itinéraires et réservation.",
+    permCamT:"Caméra",permCamD:"Pour superposer les lieux à la vue réelle",permLocT:"Position",permLocD:"Pour trouver les lieux réels à proximité",permCompT:"Boussole",permCompD:"Pour ancrer chaque lieu dans sa direction",
+    modeLive:"En direct (ma position)",modeTour:"Visite d\'AlUla",startBtn:"Commencer",autoBtn:"▶ Présentation auto — pour la direction",installBtn:"⬇ Installer l\'app",installIOS:"⬇ Installer : Partager → Sur l\'écran d\'accueil",
+    fineprint:"Pour l\'expérience complète caméra + boussole, ouvrez sur votre téléphone. « Visite d\'AlUla » vous place dans l\'oasis depuis n\'importe où.",
+    searchPh:"Rechercher un lieu par nom…",catAll:"Tout",catHeritage:"Patrimoine",catHotel:"Hôtels",catFood:"Restaurants",catEvent:"Expériences",
+    statusLive:(n,r)=>`<b>${n}</b> lieux réels dans ${r}`,statusTour:"<b>Visite d\'AlUla</b> — 14 sites",
+    loading:"Recherche des lieux réels autour de vous…",locating:"Localisation…",empty:r=>`Aucun lieu dans ${r}. Élargissez la zone et réessayez.`,error:"Impossible de charger. Vérifiez la connexion et réessayez.",retry:"Réessayer",
+    stDist:"Distance",stBear:"Direction",rating:"Note",type:"Type",about:"À propos",tip:"Conseil",hours:"Horaires",
+    gReviews:"Avis Google",tripadvisor:"Tripadvisor",website:"Site web",call:"Appeler",directions:"Itinéraire",
+    listTitle:"Tout autour de vous",mapTitle:"Carte",cameraBtn:"Caméra",close:"Fermer",save:"Enregistrer",chooseLang:"Choisir la langue",
+    autoBadge:"Démo auto — touchez pour contrôler",dragHint:"Glissez à gauche/droite pour regarder autour",manual:"Contrôle manuel — glissez pour regarder",
+    camHttps:"La caméra nécessite un lien HTTPS",camDenied:"Caméra refusée — activez-la dans les réglages",camNone:"Aucune caméra sur cet appareil",camFail:"Caméra indisponible — horizon du désert affiché",
+    geoHttps:"La position nécessite HTTPS — visite activée",geoDenied:"Position refusée — activez-la dans les réglages",geoFail:"Localisation impossible — visite activée",noGeo:"Pas de localisation — visite activée",
+    turn:(name,deg)=>`tournez de ${deg}° vers votre ${name}`,left:"gauche",right:"droite",mapNet:"La carte nécessite une connexion internet",credit:"Photo via Wikipédia"}},
+  de:{name:"German",native:"Deutsch",dir:"ltr",cardinals:["N","NO","O","SO","S","SW","W","NW"],card4:{0:"N",90:"O",180:"S",270:"W"},
+    t:{brand:"AlUla Lens",heroTitle:'Richte die Kamera auf AlUla — <em>die Geschichte erscheint.</em>',heroSub:"Ein Live-AR-Guide: Er erkennt deinen Standort und die Kamerarichtung und blendet die echten Sehenswürdigkeiten, Hotels, Restaurants und Erlebnisse um dich herum ein — mit Bewertungen, Routen und Buchung.",
+    permCamT:"Kamera",permCamD:"Um Orte über die reale Sicht zu legen",permLocT:"Standort",permLocD:"Um echte Orte in der Nähe zu finden",permCompT:"Kompass",permCompD:"Um jeden Ort in seiner Richtung zu verankern",
+    modeLive:"Live (mein Standort)",modeTour:"AlUla-Tour",startBtn:"Erlebnis starten",autoBtn:"▶ Auto-Präsentation — für die Leitung",installBtn:"⬇ App installieren",installIOS:"⬇ Installieren: Teilen → Zum Home-Bildschirm",
+    fineprint:"Für das volle Kamera- und Kompass-Erlebnis auf dem Handy öffnen. „AlUla-Tour“ versetzt dich von überall in die Oase.",
+    searchPh:"Ort nach Namen suchen…",catAll:"Alle",catHeritage:"Kulturerbe",catHotel:"Hotels",catFood:"Essen",catEvent:"Erlebnisse",
+    statusLive:(n,r)=>`<b>${n}</b> echte Orte in ${r}`,statusTour:"<b>AlUla-Tour</b> — 14 Highlights",
+    loading:"Suche echte Orte um dich…",locating:"Standort wird ermittelt…",empty:r=>`Keine Orte in ${r}. Bereich erweitern und erneut versuchen.`,error:"Laden fehlgeschlagen. Verbindung prüfen und erneut versuchen.",retry:"Erneut versuchen",
+    stDist:"Distanz",stBear:"Richtung",rating:"Bewertung",type:"Typ",about:"Über",tip:"Besuchertipp",hours:"Öffnungszeiten",
+    gReviews:"Google-Bewertungen",tripadvisor:"Tripadvisor",website:"Website",call:"Anrufen",directions:"Route",
+    listTitle:"Alles um dich herum",mapTitle:"Karte",cameraBtn:"Kamera",close:"Schließen",save:"Foto speichern",chooseLang:"Sprache wählen",
+    autoBadge:"Auto-Demo — tippen zum Steuern",dragHint:"Wische links/rechts, um dich umzusehen",manual:"Manuelle Steuerung — wischen zum Umsehen",
+    camHttps:"Kamera benötigt einen HTTPS-Link",camDenied:"Kamera verweigert — in den Einstellungen aktivieren",camNone:"Keine Kamera auf diesem Gerät",camFail:"Kamera nicht verfügbar — Wüstenhorizont angezeigt",
+    geoHttps:"Standort benötigt HTTPS — Tour aktiviert",geoDenied:"Standort verweigert — in Einstellungen aktivieren",geoFail:"Standort nicht gefunden — Tour aktiviert",noGeo:"Kein Standort — Tour aktiviert",
+    turn:(name,deg)=>`drehe dich ${deg}° nach ${name}`,left:"links",right:"rechts",mapNet:"Karte benötigt eine Internetverbindung",credit:"Foto via Wikipedia"}},
+  it:{name:"Italian",native:"Italiano",dir:"ltr",cardinals:["N","NE","E","SE","S","SO","O","NO"],card4:{0:"N",90:"E",180:"S",270:"O"},
+    t:{brand:"AlUla Lens",heroTitle:'Punta la fotocamera su AlUla — <em>la storia appare.</em>',heroSub:"Una guida AR dal vivo: legge la tua posizione e dove punti la fotocamera, poi fa apparire intorno a te i siti storici, gli hotel, i ristoranti e le esperienze reali — con recensioni, indicazioni e prenotazione.",
+    permCamT:"Fotocamera",permCamD:"Per sovrapporre i luoghi alla vista reale",permLocT:"Posizione",permLocD:"Per trovare luoghi reali vicini",permCompT:"Bussola",permCompD:"Per ancorare ogni luogo nella sua direzione",
+    modeLive:"Dal vivo (la mia posizione)",modeTour:"Tour di AlUla",startBtn:"Inizia",autoBtn:"▶ Presentazione auto — per la direzione",installBtn:"⬇ Installa app",installIOS:"⬇ Installa: Condividi → Aggiungi a Home",
+    fineprint:"Per l\'esperienza completa con fotocamera e bussola, apri sul telefono. «Tour di AlUla» ti mette nell\'oasi da ovunque.",
+    searchPh:"Cerca un luogo per nome…",catAll:"Tutti",catHeritage:"Patrimonio",catHotel:"Hotel",catFood:"Ristoranti",catEvent:"Esperienze",
+    statusLive:(n,r)=>`<b>${n}</b> luoghi reali entro ${r}`,statusTour:"<b>Tour di AlUla</b> — 14 luoghi",
+    loading:"Cerco luoghi reali intorno a te…",locating:"Localizzazione…",empty:r=>`Nessun luogo entro ${r}. Amplia il raggio e riprova.`,error:"Impossibile caricare. Controlla la connessione e riprova.",retry:"Riprova",
+    stDist:"Distanza",stBear:"Direzione",rating:"Voto",type:"Tipo",about:"Informazioni",tip:"Consiglio",hours:"Orari",
+    gReviews:"Recensioni Google",tripadvisor:"Tripadvisor",website:"Sito web",call:"Chiama",directions:"Indicazioni",
+    listTitle:"Tutto intorno a te",mapTitle:"Mappa",cameraBtn:"Fotocamera",close:"Chiudi",save:"Salva foto",chooseLang:"Scegli la lingua",
+    autoBadge:"Demo auto — tocca per controllare",dragHint:"Scorri a sinistra/destra per guardarti intorno",manual:"Controllo manuale — scorri per guardare",
+    camHttps:"La fotocamera richiede un link HTTPS",camDenied:"Fotocamera negata — attivala nelle impostazioni",camNone:"Nessuna fotocamera su questo dispositivo",camFail:"Fotocamera non disponibile — orizzonte del deserto",
+    geoHttps:"La posizione richiede HTTPS — tour attivato",geoDenied:"Posizione negata — attivala nelle impostazioni",geoFail:"Posizione non trovata — tour attivato",noGeo:"Nessuna posizione — tour attivato",
+    turn:(name,deg)=>`gira di ${deg}° verso ${name}`,left:"sinistra",right:"destra",mapNet:"La mappa richiede una connessione internet",credit:"Foto via Wikipedia"}},
+  zh:{name:"Chinese",native:"中文",dir:"ltr",cardinals:["北","东北","东","东南","南","西南","西","西北"],card4:{0:"北",90:"东",180:"南",270:"西"},
+    t:{brand:"AlUla Lens",heroTitle:'将镜头对准欧拉 — <em>故事随即浮现。</em>',heroSub:"实时 AR 导览：识别你的位置和镜头方向，把你周围真实的古迹、酒店、餐厅与体验浮现在画面上 — 附带评价、导航与预订。",
+    permCamT:"相机",permCamD:"在真实画面上叠加地点",permLocT:"位置",permLocD:"获取附近的真实地点",permCompT:"指南针",permCompD:"将每个地点锚定在正确方向",
+    modeLive:"实时（我的位置）",modeTour:"欧拉之旅",startBtn:"开始体验",autoBtn:"▶ 自动演示 — 用于汇报",installBtn:"⬇ 安装应用",installIOS:"⬇ 安装：分享按钮 → 添加到主屏幕",
+    fineprint:"如需完整的相机与指南针体验，请在手机上打开。“欧拉之旅”可让你在任何地方预览绿洲。",
+    searchPh:"按名称搜索地点…",catAll:"全部",catHeritage:"古迹",catHotel:"酒店",catFood:"餐饮",catEvent:"体验",
+    statusLive:(n,r)=>`${r} 内 <b>${n}</b> 个真实地点`,statusTour:"<b>欧拉之旅</b> — 14 个亮点",
+    loading:"正在查找你周围的真实地点…",locating:"定位中…",empty:r=>`${r} 内没有地点。请扩大范围后重试。`,error:"加载失败。请检查网络后重试。",retry:"重试",
+    stDist:"距离",stBear:"方向",rating:"评分",type:"类型",about:"简介",tip:"游览提示",hours:"营业时间",
+    gReviews:"谷歌评价",tripadvisor:"Tripadvisor",website:"网站",call:"拨打",directions:"导航",
+    listTitle:"你周围的一切",mapTitle:"地图",cameraBtn:"相机",close:"关闭",save:"保存照片",chooseLang:"选择语言",
+    autoBadge:"自动演示 — 轻触以接管",dragHint:"左右滑动屏幕环顾四周",manual:"手动控制 — 滑动以环顾",
+    camHttps:"相机需要 HTTPS 链接",camDenied:"相机被拒绝 — 请在设置中开启",camNone:"此设备没有相机",camFail:"相机不可用 — 显示沙漠地平线",
+    geoHttps:"定位需要 HTTPS — 已启用欧拉之旅",geoDenied:"定位被拒绝 — 请在设置中开启",geoFail:"无法定位 — 已启用欧拉之旅",noGeo:"设备无定位 — 已启用欧拉之旅",
+    turn:(name,deg)=>`向${name}转 ${deg}°`,left:"左侧",right:"右侧",mapNet:"地图需要网络连接",credit:"图片来自维基百科"}}
 };
+const LANG_ORDER=["en","ar","fr","de","it","zh"];
+const EXTRA={
+  en:{listen:"Listen",hearName:"Hear the name",tours:"Tours",stops:"stops",duration:"Duration",viewRoute:"View route on map",share:"Share",saveFirst:"Saved! Now open the app to post your photo.",ttsOff:"Voice not available on this device",routeTitle:"Suggested route"},
+  ar:{listen:"استمع",hearName:"انطق الاسم",tours:"المسارات",stops:"محطات",duration:"المدة",viewRoute:"عرض المسار على الخريطة",share:"مشاركة",saveFirst:"تم الحفظ! افتح التطبيق الآن لنشر صورتك.",ttsOff:"النطق الصوتي غير متاح على هذا الجهاز",routeTitle:"المسار المقترح"},
+  fr:{listen:"Écouter",hearName:"Entendre le nom",tours:"Itinéraires",stops:"étapes",duration:"Durée",viewRoute:"Voir l'itinéraire sur la carte",share:"Partager",saveFirst:"Enregistré ! Ouvrez l'app pour publier votre photo.",ttsOff:"Voix non disponible sur cet appareil",routeTitle:"Itinéraire suggéré"},
+  de:{listen:"Anhören",hearName:"Namen anhören",tours:"Touren",stops:"Stopps",duration:"Dauer",viewRoute:"Route auf Karte ansehen",share:"Teilen",saveFirst:"Gespeichert! Öffne die App, um dein Foto zu posten.",ttsOff:"Sprachausgabe auf diesem Gerät nicht verfügbar",routeTitle:"Empfohlene Route"},
+  it:{listen:"Ascolta",hearName:"Ascolta il nome",tours:"Itinerari",stops:"tappe",duration:"Durata",viewRoute:"Vedi il percorso sulla mappa",share:"Condividi",saveFirst:"Salvato! Apri l'app per pubblicare la tua foto.",ttsOff:"Voce non disponibile su questo dispositivo",routeTitle:"Percorso consigliato"},
+  zh:{listen:"收听",hearName:"听发音",tours:"行程",stops:"站",duration:"时长",viewRoute:"在地图上查看路线",share:"分享",saveFirst:"已保存！现在打开应用发布你的照片。",ttsOff:"此设备不支持语音",routeTitle:"建议路线"}
+};
+LANG_ORDER.forEach(k=>Object.assign(LANGS[k].t,EXTRA[k]||EXTRA.en));
+const EXTRA2={
+  en:{official:"Official page",book:"Book now",from:"From",perPerson:"per person",bookable:"Bookable experiences",bookableSub:"Official tours & experiences with live prices"},
+  ar:{official:"الصفحة الرسمية",book:"احجز الآن",from:"من",perPerson:"للشخص",bookable:"تجارب قابلة للحجز",bookableSub:"جولات وتجارب رسمية بأسعار مباشرة"},
+  fr:{official:"Page officielle",book:"Réserver",from:"À partir de",perPerson:"par personne",bookable:"Expériences réservables",bookableSub:"Visites et expériences officielles avec tarifs"},
+  de:{official:"Offizielle Seite",book:"Jetzt buchen",from:"Ab",perPerson:"pro Person",bookable:"Buchbare Erlebnisse",bookableSub:"Offizielle Touren & Erlebnisse mit Preisen"},
+  it:{official:"Pagina ufficiale",book:"Prenota ora",from:"Da",perPerson:"a persona",bookable:"Esperienze prenotabili",bookableSub:"Tour ed esperienze ufficiali con prezzi"},
+  zh:{official:"官方页面",book:"立即预订",from:"起",perPerson:"每人",bookable:"可预订体验",bookableSub:"官方导览与体验，实时价格"}
+};
+LANG_ORDER.forEach(k=>Object.assign(LANGS[k].t,EXTRA2[k]||EXTRA2.en));
+const fmtPrice=p=>state.lang==='zh'?(p.price+'﷼ '+L('from')):(state.lang==='ar'?(L('from')+' '+p.price+' ﷼'):(L('from')+' SAR '+p.price));
 
-/* ===== جولة العلا (احتياطي) ===== */
-const DEMO_CENTER = {lat:26.6189, lng:37.9176};
-const DEMO_POIS = [
-  {id:'hegra',cat:'heritage',name:'الحِجر (مدائن صالح)',en:'Hegra Madain Salih',lat:26.7917,lng:37.9542,rate:4.8,info:'أول موقع سعودي في قائمة التراث العالمي لليونسكو: مدينة نبطية محفورة في الصخر بأكثر من 100 مقبرة، أشهرها قصر الفريد.'},
-  {id:'oldtown',cat:'heritage',name:'بلدة العلا القديمة',en:'AlUla Old Town',lat:26.6189,lng:37.9176,rate:4.6,info:'حارة طينية تاريخية بأكثر من 900 منزل على طريق الحج والتجارة، رُمِّمت أزقّتها لتعجّ بالمقاهي والورش الحرفية.'},
-  {id:'elephant',cat:'heritage',name:'جبل الفيل',en:'Elephant Rock',lat:26.6133,lng:37.9985,rate:4.7,info:'تشكيل صخري طبيعي على هيئة فيل ضخم، من أكثر معالم العلا التقاطاً للصور خصوصاً عند الغروب.'},
-  {id:'dadan',cat:'heritage',name:'دادان (الخريبة)',en:'Dadan',lat:26.6386,lng:37.9356,rate:4.5,info:'عاصمة مملكتَي دادان ولحيان قبل أكثر من 2000 عام، تشتهر بمقابرها المنحوتة ومنها مقابر الأسود.'},
-  {id:'ikmah',cat:'heritage',name:'جبل عكمة',en:'Jabal Ikmah',lat:26.6494,lng:37.9269,rate:4.7,info:'مكتبة مفتوحة في الهواء الطلق بمئات النقوش الدادانية واللحيانية والنبطية، ضمن «ذاكرة العالم» لليونسكو.'},
-  {id:'maraya',cat:'event',name:'مرايا',en:'Maraya',lat:26.7106,lng:37.9461,rate:4.8,info:'أكبر مبنى مكسوّ بالمرايا في العالم بحسب غينيس، يعكس جبال وادي أشار ويستضيف الحفلات العالمية.'},
-  {id:'banyan',cat:'hotel',name:'بانيان تري العلا',en:'Banyan Tree AlUla',lat:26.6995,lng:37.9612,rate:4.9,info:'منتجع فاخر من الفلل الصحراوية في وادي أشار بين التكوينات الصخرية بخصوصية مطلقة.'},
-  {id:'habitas',cat:'hotel',name:'حبيتاس العلا',en:'Our Habitas AlUla',lat:26.6852,lng:37.9701,rate:4.7,info:'منتجع بيئي عصري في واحة أشار بفلل ومسابح خاصة ومفهوم سياحة مستدامة.'},
-  {id:'shaden',cat:'hotel',name:'منتجع شادن',en:'Shaden Resort',lat:26.6248,lng:37.9089,rate:4.4,info:'منتجع على الطراز الصحراوي قرب البلدة القديمة بإطلالات على الجبال الرملية.'},
-  {id:'suhail',cat:'food',name:'مطعم سهيل',en:'Suhail',lat:26.6993,lng:37.9609,rate:4.6,info:'مطعم راقٍ في بانيان تري يقدّم مأكولات الشرق الأوسط بلمسة معاصرة تحت سماء الصحراء.'},
-  {id:'marayasocial',cat:'food',name:'مرايا سوشال',en:'Maraya Social',lat:26.7108,lng:37.9458,rate:4.5,info:'مطعم الشيف جيسون أثيرتون فوق مبنى مرايا بإطلالة بانورامية على الوادي.'},
-  {id:'okto',cat:'food',name:'أوكتو',en:'Okto',lat:26.6181,lng:37.9203,rate:4.4,info:'مطعم يوناني نابض بالحياة في قلب العلا بأطباق مشوية على الفحم وأجواء عائلية.'},
-  {id:'tantora',cat:'event',name:'شتاء طنطورة',en:'Winter at Tantora',lat:26.6205,lng:37.9168,rate:4.6,info:'مهرجان موسمي يحتفي بتراث العلا عبر الحفلات والمعارض والمناطيد، مستوحى من حجر طنطورة.'}
+/* ================= الفئات ================= */
+const CATS={
+  heritage:{color:"var(--gold)",hex:"#D8A24A",icon:'<path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/>'},
+  hotel:{color:"var(--sky)",hex:"#6FA3C7",icon:'<path d="M3 21V7l9-4 9 4v14M3 21h18M8 21v-4h8v4M7 11h.01M12 11h.01M17 11h.01"/>'},
+  food:{color:"var(--terra)",hex:"#E08A5B",icon:'<path d="M4 3v7a3 3 0 0 0 6 0V3M7 3v18M21 3v18M21 9c-2 0-3-1-3-4 0-2 1-2 3-2"/>'},
+  event:{color:"var(--oasis)",hex:"#8FB98A",icon:'<path d="M12 2v6M12 8c-3 0-5 2-5 5h10c0-3-2-5-5-5zM7 13c-2 1-3 3-3 6h16c0-3-1-5-3-6M12 22v-3"/>'}
+};
+const catLabel=c=>L('cat'+c.charAt(0).toUpperCase()+c.slice(1));
+
+/* ================= جولة العلا ================= */
+const DEMO_CENTER={lat:26.6189,lng:37.9176};
+const DEMO_POIS=[
+  {id:'hegra',cat:'heritage',lat:26.7917,lng:37.9542,rate:4.8,wiki:{en:"Hegra (Mada'in Salih)",ar:"مدائن صالح"},hours:"8:00–18:00",
+    nm:{en:"Hegra (Madain Salih)",ar:"الحِجر (مدائن صالح)"},
+    ab:{en:"Saudi Arabia's first UNESCO World Heritage Site: a Nabataean city carved into sandstone with more than 100 monumental tombs. Its lone tomb, Qasr al-Farid, stands unfinished in the open desert.",ar:"أول موقع سعودي في قائمة التراث العالمي لليونسكو: مدينة نبطية محفورة في الصخر بأكثر من 100 مقبرة، وأشهرها قصر الفريد المنفرد في الصحراء."},
+    tp:{en:"Visit at golden hour and book the official guided tour — independent entry is limited.",ar:"زُره وقت الغروب واحجز الجولة الرسمية، فالدخول الفردي محدود."}},
+  {id:'oldtown',cat:'heritage',lat:26.6189,lng:37.9176,rate:4.6,wiki:{en:"AlUla",ar:"العلا"},hours:"9:00–22:00",
+    nm:{en:"AlUla Old Town",ar:"بلدة العلا القديمة"},
+    ab:{en:"A historic mud-brick labyrinth of more than 900 houses on the ancient pilgrimage and trade route. Its restored lanes now brim with cafés and craft workshops.",ar:"حارة طينية تاريخية بأكثر من 900 منزل على طريق الحج والتجارة، رُمِّمت أزقّتها لتعجّ بالمقاهي والورش الحرفية."},
+    tp:{en:"Come after sunset when the lanes are lit and cooler.",ar:"تعال بعد الغروب حين تُضاء الأزقّة ويعتدل الجو."}},
+  {id:'elephant',cat:'heritage',lat:26.6133,lng:37.9985,rate:4.7,wiki:{en:"AlUla"},
+    nm:{en:"Elephant Rock (Jabal AlFil)",ar:"جبل الفيل"},
+    ab:{en:"A natural sandstone formation shaped by wind into a giant elephant with its trunk to the ground — one of AlUla's most photographed landmarks.",ar:"تشكيل صخري طبيعي نحتته الرياح على هيئة فيل ضخم يمدّ خرطومه إلى الأرض، من أكثر معالم العلا التقاطاً للصور."},
+    tp:{en:"There's a sunken lounge area below — perfect for sunset drinks.",ar:"تحته جلسات منخفضة مثالية لمشروب عند الغروب."}},
+  {id:'dadan',cat:'heritage',lat:26.6386,lng:37.9356,rate:4.5,wiki:{en:"Dedan",ar:"دادان"},
+    nm:{en:"Dadan",ar:"دادان (الخريبة)"},
+    ab:{en:"Capital of the Dadan and Lihyan kingdoms over 2,000 years ago, known for tombs cut high into the cliff, including the famed Lion Tombs.",ar:"عاصمة مملكتَي دادان ولحيان قبل أكثر من 2000 عام، تشتهر بمقابرها المنحوتة في الجبل ومنها مقابر الأسود."}},
+  {id:'ikmah',cat:'heritage',lat:26.6494,lng:37.9269,rate:4.7,wiki:{en:"Jabal Ikmah"},
+    nm:{en:"Jabal Ikmah",ar:"جبل عكمة"},
+    ab:{en:"An open-air library of hundreds of Dadanitic, Lihyanite and Nabataean inscriptions, listed in UNESCO's Memory of the World register.",ar:"مكتبة مفتوحة في الهواء الطلق بمئات النقوش الدادانية واللحيانية والنبطية، ضمن «ذاكرة العالم» لليونسكو."}},
+  {id:'maraya',cat:'event',lat:26.7106,lng:37.9461,rate:4.8,wiki:{en:"Maraya"},
+    nm:{en:"Maraya",ar:"مرايا"},
+    ab:{en:"The world's largest mirrored building per Guinness World Records, reflecting the Ashar valley cliffs and hosting global concerts and shows.",ar:"أكبر مبنى مكسوّ بالمرايا في العالم بحسب غينيس، يعكس جبال وادي أشار ويستضيف الحفلات العالمية."}},
+  {id:'banyan',cat:'hotel',lat:26.6995,lng:37.9612,rate:4.9,
+    nm:{en:"Banyan Tree AlUla",ar:"بانيان تري العلا"},
+    ab:{en:"A luxury tented-villa resort set among the rock formations of Ashar valley, blending privacy with the raw desert landscape.",ar:"منتجع فاخر من الفلل الصحراوية في وادي أشار بين التكوينات الصخرية بخصوصية مطلقة."}},
+  {id:'habitas',cat:'hotel',lat:26.6852,lng:37.9701,rate:4.7,
+    nm:{en:"Our Habitas AlUla",ar:"حبيتاس العلا"},
+    ab:{en:"A modern eco-resort in Ashar oasis with timber villas and private pools, built on a sustainable wellness philosophy.",ar:"منتجع بيئي عصري في واحة أشار بفلل ومسابح خاصة ومفهوم سياحة مستدامة وعافية."}},
+  {id:'shaden',cat:'hotel',lat:26.6248,lng:37.9089,rate:4.4,
+    nm:{en:"Shaden Resort",ar:"منتجع شادن"},
+    ab:{en:"A desert-style resort near the Old Town with sandstone-mountain views and a relaxed mid-range stay.",ar:"منتجع على الطراز الصحراوي قرب البلدة القديمة بإطلالات على الجبال الرملية."}},
+  {id:'suhail',cat:'food',lat:26.6993,lng:37.9609,rate:4.6,
+    nm:{en:"Suhail Restaurant",ar:"مطعم سهيل"},
+    ab:{en:"An upscale restaurant at Banyan Tree serving contemporary Middle Eastern cuisine under the desert stars.",ar:"مطعم راقٍ في بانيان تري يقدّم مأكولات الشرق الأوسط بلمسة معاصرة تحت سماء الصحراء."}},
+  {id:'marayasocial',cat:'food',lat:26.7108,lng:37.9458,rate:4.5,
+    nm:{en:"Maraya Social",ar:"مرايا سوشال"},
+    ab:{en:"Chef Jason Atherton's rooftop restaurant atop Maraya, with panoramic valley views and global cuisine.",ar:"مطعم الشيف جيسون أثيرتون فوق مبنى مرايا بإطلالة بانورامية على الوادي."}},
+  {id:'okto',cat:'food',lat:26.6181,lng:37.9203,rate:4.4,
+    nm:{en:"Okto",ar:"أوكتو"},
+    ab:{en:"A lively Greek restaurant in the heart of AlUla, with charcoal-grilled dishes and meze in a buzzy family atmosphere.",ar:"مطعم يوناني نابض بالحياة في قلب العلا بأطباق مشوية على الفحم وأجواء عائلية."}},
+  {id:'tantora',cat:'event',lat:26.6205,lng:37.9168,rate:4.6,
+    nm:{en:"Winter at Tantora",ar:"شتاء طنطورة"},
+    ab:{en:"A seasonal festival celebrating AlUla's heritage with concerts, exhibitions and hot-air balloons, named after the historic Tantora sundial.",ar:"مهرجان موسمي يحتفي بتراث العلا عبر الحفلات والمعارض والمناطيد، مستوحى من حجر طنطورة."}},
+  {id:'azimuth',cat:'event',lat:26.7099,lng:37.9472,rate:4.5,
+    nm:{en:"Azimuth Festival",ar:"مهرجان أزيموث"},
+    ab:{en:"A contemporary music festival bringing global and regional artists to the desert near Maraya, part of AlUla Moments.",ar:"مهرجان موسيقي معاصر يجمع فنانين عالميين ومحليين في الصحراء قرب مرايا ضمن «لحظات العلا»."}}
 ];
 
-/* ===== حساب ===== */
-const R=6371000, toR=d=>d*Math.PI/180, toD=r=>r*180/Math.PI;
+/* ===== بيانات رسمية إضافية (experiencealula.com) ===== */
+const OFFICIAL='https://www.experiencealula.com/en/';
+DEMO_POIS.push(
+  {id:'wadialfann',cat:'heritage',lat:26.4670,lng:37.7330,rate:4.7,link:OFFICIAL+'places-to-go/wadi-alfann',
+    nm:{en:"Wadi AlFann",ar:"وادي الفن"},ab:{en:"The Valley of the Arts — vast desert canyons hosting monumental, permanent land-art installations by leading global artists.",ar:"وادي الفن: أودية صحراوية شاسعة تحتضن أعمالاً فنية أرضية ضخمة ودائمة لكبار فناني العالم."}},
+  {id:'villahegra',cat:'heritage',lat:26.6112,lng:37.9205,rate:4.5,link:OFFICIAL+'places-to-go/villa-hegra',
+    nm:{en:"Villa Hegra",ar:"فيلا حجرة"},ab:{en:"A new cultural landmark in AlUla — a hub for art, dialogue and creative exchange between Saudi Arabia and the world.",ar:"معلم ثقافي جديد في العلا، ومركز للفنون والحوار والتبادل الإبداعي بين السعودية والعالم."}},
+  {id:'aljadidah',cat:'heritage',lat:26.6128,lng:37.9242,rate:4.5,link:OFFICIAL+'places-to-go/aljadidah-arts-district',
+    nm:{en:"AlJadidah Arts District",ar:"حي الجديدة الفني"},ab:{en:"A lively arts district where street art, galleries, cafés and restaurants fill restored lanes — art is everywhere.",ar:"حي فني نابض تملأ أزقّته المرمّمة جدارياتُ الشارع والمعارض والمقاهي والمطاعم."}},
+  {id:'sharaan',cat:'event',lat:26.8500,lng:38.0300,rate:4.7,link:OFFICIAL+'places-to-go/sharaan-nature-reserve',
+    nm:{en:"Sharaan Nature Reserve",ar:"محمية شرعان الطبيعية"},ab:{en:"A protected wilderness of canyons and wildlife where the Arabian leopard and native species are being reintroduced.",ar:"محمية طبيعية من الأودية والحياة الفطرية يُعاد فيها توطين النمر العربي والأنواع المحلية."}},
+  {id:'harrat',cat:'event',lat:26.7400,lng:37.8650,rate:4.6,link:OFFICIAL+'places-to-go/harrat-viewpoint',
+    nm:{en:"Harrat Viewpoint",ar:"مطل الحرّة"},ab:{en:"A lofty viewpoint on the volcanic harrat plateau with sweeping panoramas over AlUla's valley.",ar:"مطل مرتفع على هضبة الحرّة البركانية بإطلالات بانورامية واسعة على وادي العلا."}},
+  {id:'oasis',cat:'heritage',lat:26.6235,lng:37.9165,rate:4.6,link:OFFICIAL+'places-to-go/alula-oasis',
+    nm:{en:"AlUla Oasis",ar:"واحة العلا"},ab:{en:"A nourishing lifeline of more than two million date palms and citrus groves — the green heart of AlUla.",ar:"شريان الحياة الأخضر بأكثر من مليوني نخلة وبساتين حمضيات، وهو قلب العلا النابض."}},
+  {id:'manshiyah',cat:'heritage',lat:26.6158,lng:37.9148,rate:4.3,link:OFFICIAL+'places-to-go',
+    nm:{en:"AlManshiyah Plaza",ar:"ساحة المنشية"},ab:{en:"A revived heritage plaza around the historic railway station, now a venue for events and gatherings.",ar:"ساحة تراثية مُحيّاة حول محطة السكة الحديد التاريخية، صارت مكاناً للفعاليات والتجمّعات."}},
+  {id:'ashar',cat:'event',lat:26.6900,lng:37.9650,rate:4.7,link:OFFICIAL+'places-to-go/ashar-valley',
+    nm:{en:"Ashar Valley",ar:"وادي أشار"},ab:{en:"A dramatic valley of towering sandstone cliffs, home to Maraya and AlUla's flagship desert resorts.",ar:"وادٍ مهيب بجروف رملية شاهقة، يحتضن مرايا وأبرز منتجعات العلا الصحراوية."}},
+  {id:'lapalma',cat:'food',lat:26.6248,lng:37.9089,rate:4.4,link:OFFICIAL+'things-to-do/food-and-drink/la-palma-restaurant-at-shaden-resort',
+    nm:{en:"La Palma at Shaden",ar:"لا بالما — شادن"},ab:{en:"A relaxed restaurant at Shaden Resort serving international dishes with desert-mountain views.",ar:"مطعم هادئ في منتجع شادن يقدّم أطباقاً عالمية بإطلالة على الجبال الصحراوية."}},
+  {id:'saffron',cat:'food',lat:26.6205,lng:37.9215,rate:4.5,link:OFFICIAL+'things-to-do/food-and-drink/saffron',
+    nm:{en:"Saffron",ar:"زعفران"},ab:{en:"Thai cuisine with bold, fragrant flavours in an elegant AlUla setting.",ar:"مطبخ تايلندي بنكهات جريئة وعطرة في أجواء أنيقة بالعلا."}},
+  {id:'tama',cat:'food',lat:26.6852,lng:37.9701,rate:4.6,link:OFFICIAL+'things-to-do/food-and-drink/tama',
+    nm:{en:"Tama",ar:"تاما"},ab:{en:"Farm-to-table dining at Our Habitas, celebrating local produce in the heart of Ashar valley.",ar:"تجربة «من المزرعة إلى المائدة» في حبيتاس، تحتفي بالمنتج المحلي وسط وادي أشار."}},
+  {id:'somewhere',cat:'food',lat:26.6122,lng:37.9228,rate:4.4,link:OFFICIAL+'things-to-do/food-and-drink/somewhere',
+    nm:{en:"Somewhere",ar:"سَمواير"},ab:{en:"A stylish all-day restaurant in AlUla town with a diverse international menu.",ar:"مطعم أنيق يعمل طوال اليوم في بلدة العلا بقائمة عالمية متنوّعة."}},
+  {id:'ashardeck',cat:'food',lat:26.6855,lng:37.9705,rate:4.6,link:OFFICIAL+'things-to-do/food-and-drink/ashar-deck-at-habitas',
+    nm:{en:"Ashar Deck",ar:"أشار ديك"},ab:{en:"An open-air deck at Our Habitas for sunset dining beneath the Ashar cliffs.",ar:"تراس مفتوح في حبيتاس لعشاء عند الغروب أسفل جروف أشار."}},
+  {id:'charcood',cat:'food',lat:26.6135,lng:37.9212,rate:4.4,link:OFFICIAL+'things-to-do/food-and-drink/charcood',
+    nm:{en:"Charcood",ar:"شاركود"},ab:{en:"A modern charcoal-grill restaurant with smoky flavours and a contemporary vibe.",ar:"مطعم عصري للمشاوي على الفحم بنكهات مدخّنة وأجواء معاصرة."}},
+  {id:'dartantora',cat:'hotel',lat:26.6192,lng:37.9172,rate:4.8,link:OFFICIAL+'hotels-and-stays/dar-tantora-the-house-hotel',
+    nm:{en:"Dar Tantora The House Hotel",ar:"دار طنطورة"},ab:{en:"A heritage hotel within AlUla Old Town, its mud-brick houses lit by candlelight for an authentic stay.",ar:"فندق تراثي داخل بلدة العلا القديمة، منازله الطينية مضاءة بالشموع لإقامة أصيلة."}},
+  {id:'ashartented',cat:'hotel',lat:26.6905,lng:37.9648,rate:4.7,link:OFFICIAL+'hotels-and-stays/ashar-tented-resort',
+    nm:{en:"Ashar Tented Resort",ar:"منتجع أشار الخيمي"},ab:{en:"Luxury tented villas tucked among the cliffs of Ashar valley, blending comfort with raw nature.",ar:"فلل خيمية فاخرة بين جروف وادي أشار تمزج الرفاهية بالطبيعة البكر."}},
+  {id:'chedihegra',cat:'hotel',lat:26.7820,lng:37.9510,rate:4.8,link:OFFICIAL+'hotels-and-stays/the-chedi-hegra',
+    nm:{en:"The Chedi Hegra",ar:"تشيدي الحِجر"},ab:{en:"A landmark hotel set within the UNESCO site of Hegra — a rare stay amid ancient Nabataean heritage.",ar:"فندق استثنائي داخل موقع الحِجر المدرج في اليونسكو، إقامة نادرة وسط التراث النبطي."}},
+  {id:'cloud7',cat:'hotel',lat:26.6150,lng:37.9225,rate:4.3,link:OFFICIAL+'hotels-and-stays/cloud7-residence',
+    nm:{en:"Cloud7 Residence",ar:"كلاود 7"},ab:{en:"A contemporary residence in AlUla's arts district, ideal for longer, design-led stays.",ar:"سكن عصري في حي الفنون بالعلا، مثالي للإقامات الأطول بطابع تصميمي."}},
+  {id:'caravan',cat:'hotel',lat:26.6862,lng:37.9690,rate:4.5,link:OFFICIAL+'hotels-and-stays/caravan-by-habitas',
+    nm:{en:"Caravan by Habitas",ar:"كرفان باي حبيتاس"},ab:{en:"Retro-style Airstream caravans offering a playful, design-forward desert stay near Ashar.",ar:"كرفانات بطراز عتيق تقدّم إقامة صحراوية مرحة بتصميم مميّز قرب أشار."}},
+  {id:'skies',cat:'event',lat:26.6200,lng:37.9180,rate:4.7,link:OFFICIAL+'whats-on/festivals/alula-skies-festival',
+    nm:{en:"AlUla Skies Festival 2026",ar:"مهرجان سماء العلا 2026"},ab:{en:"A spectacular festival of hot-air balloons, stargazing and aerial shows lighting up AlUla's skies.",ar:"مهرجان مبهر بالمناطيد ومراقبة النجوم والعروض الجوية التي تضيء سماء العلا."}},
+  {id:'ultragobi',cat:'event',lat:26.6210,lng:37.9190,rate:4.6,link:OFFICIAL+'whats-on/events/ultra-gobi-alula',
+    nm:{en:"Ultra Gobi AlUla",ar:"ألترا غوبي العلا"},ab:{en:"An extreme endurance ultramarathon across AlUla's dramatic desert and mountain terrain.",ar:"سباق تحمّل فائق عبر تضاريس العلا الصحراوية والجبلية المهيبة."}},
+  // ===== تجارب قابلة للحجز (أسعار رسمية) =====
+  {id:'marayatour',cat:'event',lat:26.7106,lng:37.9461,rate:4.6,exp:true,price:95,durTxt:{en:"45 min",ar:"45 دقيقة"},link:OFFICIAL+'things-to-do/experiences/maraya-tour',
+    nm:{en:"Maraya Tour",ar:"جولة مرايا"},ab:{en:"A guided tour of the world's largest mirrored building, a modern architectural wonder. Available year-round.",ar:"جولة مصحوبة بمرشد في أكبر مبنى مكسوّ بالمرايا في العالم، تحفة معمارية حديثة. متاحة طوال العام."}},
+  {id:'oldtownoasis',cat:'event',lat:26.6200,lng:37.9170,rate:4.7,exp:true,price:90,durTxt:{en:"1h 15m",ar:"ساعة و15 دقيقة"},link:OFFICIAL+'things-to-do/experiences/from-old-town-to-oasis',
+    nm:{en:"From Old Town to Oasis",ar:"من البلدة القديمة إلى الواحة"},ab:{en:"A guided twilight walk linking AlUla's Old Town and the palm oasis. Available 5 Jun–31 Jul 2026.",ar:"مسير مسائي مصحوب بمرشد يربط البلدة القديمة بواحة النخيل. متاح 5 يونيو–31 يوليو 2026."}},
+  {id:'hegratour',cat:'event',lat:26.7917,lng:37.9542,rate:4.8,exp:true,price:140,durTxt:{en:"~2h",ar:"~ساعتان"},link:OFFICIAL+'things-to-do/experiences/hegra-day-tour',
+    nm:{en:"Hegra Day Tour",ar:"جولة الحِجر النهارية"},ab:{en:"The flagship guided tour of Hegra, Saudi Arabia's first UNESCO World Heritage Site and its Nabataean tombs.",ar:"الجولة الرئيسية في الحِجر، أول موقع سعودي بقائمة اليونسكو ومقابره النبطية."}},
+  {id:'dadanikmahtour',cat:'event',lat:26.6440,lng:37.9310,rate:4.7,exp:true,price:140,durTxt:{en:"~2h",ar:"~ساعتان"},link:OFFICIAL+'things-to-do/experiences/dadan-and-jabal-ikmah-premium-tour',
+    nm:{en:"Dadan & Jabal Ikmah Premium Tour",ar:"جولة دادان وجبل عكمة المميّزة"},ab:{en:"A premium guided tour through the ancient capital of Dadan and the open-air library of Jabal Ikmah.",ar:"جولة مميّزة مصحوبة بمرشد عبر عاصمة دادان القديمة ومكتبة جبل عكمة المفتوحة."}}
+);
+const OFFICIAL_LINKS={hegra:'places-to-go/hegra',dadan:'places-to-go/dadan',ikmah:'places-to-go/jabal-ikmah',maraya:'places-to-go/maraya',elephant:'places-to-go/elephant-rock',oldtown:'places-to-go/alula-old-town',banyan:'hotels-and-stays/banyan-tree-alula',habitas:'hotels-and-stays/habitas-alula-resort',shaden:'hotels-and-stays/shaden-resort'};
+DEMO_POIS.forEach(p=>{if(OFFICIAL_LINKS[p.id]&&!p.link)p.link=OFFICIAL+OFFICIAL_LINKS[p.id];});
+const expName=p=>p.durTxt?(p.durTxt[state.lang]||p.durTxt.en):'';
+
+/* ================= المسارات السياحية ================= */
+const TOURS=[
+  {id:'half',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',hex:'#D8A24A',
+    t:{en:"Half day",ar:"نصف يوم",fr:"Demi-journée",de:"Halbtag",it:"Mezza giornata",zh:"半日游"},
+    s:{en:"The essential highlights, fast.",ar:"أبرز المعالم بسرعة.",fr:"L'essentiel, rapidement.",de:"Die wichtigsten Highlights, schnell.",it:"Il meglio, in poco tempo.",zh:"快速打卡核心亮点。"},
+    dur:{en:"~4 hours",ar:"~4 ساعات",fr:"~4 heures",de:"~4 Std.",it:"~4 ore",zh:"约4小时"},
+    stops:[['oldtown','09:00'],['dadan','10:30'],['elephant','12:30']]},
+  {id:'full',icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M3 12h2M19 12h2"/>',hex:'#C9893A',
+    t:{en:"Full day",ar:"يوم كامل",fr:"Journée complète",de:"Ganzer Tag",it:"Giornata intera",zh:"全日游"},
+    s:{en:"A complete AlUla immersion.",ar:"انغماس كامل في العلا.",fr:"Une immersion complète à AlUla.",de:"Volles AlUla-Erlebnis.",it:"Immersione totale ad AlUla.",zh:"完整深度体验欧拉。"},
+    dur:{en:"Full day",ar:"يوم كامل",fr:"Journée",de:"Ganztags",it:"Tutto il giorno",zh:"全天"},
+    stops:[['hegra','08:00'],['dadan','11:00'],['ikmah','12:30'],['oldtown','16:00'],['elephant','17:30'],['maraya','19:30']]},
+  {id:'family',icon:'<path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 11a3 3 0 1 0 0-6"/>',hex:'#8FB98A',
+    t:{en:"Family",ar:"عائلي",fr:"En famille",de:"Familie",it:"Famiglia",zh:"亲子"},
+    s:{en:"Easy, fun stops for all ages.",ar:"محطات سهلة وممتعة لكل الأعمار.",fr:"Des étapes faciles et amusantes.",de:"Einfache, lustige Stopps für alle.",it:"Tappe facili e divertenti.",zh:"轻松有趣，适合全家。"},
+    dur:{en:"~5 hours",ar:"~5 ساعات",fr:"~5 heures",de:"~5 Std.",it:"~5 ore",zh:"约5小时"},
+    stops:[['oldtown','10:00'],['elephant','12:00'],['maraya','18:00']]},
+  {id:'romantic',icon:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/>',hex:'#E08A5B',
+    t:{en:"Romantic",ar:"رومانسي",fr:"Romantique",de:"Romantisch",it:"Romantico",zh:"浪漫"},
+    s:{en:"Sunsets and fine dining for two.",ar:"غروب وعشاء فاخر لشخصين.",fr:"Couchers de soleil et dîner à deux.",de:"Sonnenuntergänge und Dinner zu zweit.",it:"Tramonti e cena per due.",zh:"日落与二人晚餐。"},
+    dur:{en:"Evening",ar:"مسائي",fr:"Soirée",de:"Abends",it:"Serata",zh:"傍晚"},
+    stops:[['elephant','16:30'],['maraya','18:30'],['suhail','20:30'],['banyan','22:00']]},
+  {id:'adventure',icon:'<path d="M3 20h18L13 4l-3 6-2-3-5 13z"/>',hex:'#6FA3C7',
+    t:{en:"Adventure & nature",ar:"مغامرة وطبيعة",fr:"Aventure & nature",de:"Abenteuer & Natur",it:"Avventura e natura",zh:"探险与自然"},
+    s:{en:"Rocks, canyons and big views.",ar:"صخور وأودية وإطلالات واسعة.",fr:"Rochers, canyons et grands panoramas.",de:"Felsen, Schluchten und Weitblicke.",it:"Rocce, canyon e ampie vedute.",zh:"奇岩、峡谷与壮阔视野。"},
+    dur:{en:"~6 hours",ar:"~6 ساعات",fr:"~6 heures",de:"~6 Std.",it:"~6 ore",zh:"约6小时"},
+    stops:[['elephant','08:00'],['ikmah','10:30'],['hegra','13:00']]},
+  {id:'heritage',icon:'<path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/>',hex:'#D8A24A',
+    t:{en:"Heritage & culture",ar:"تراث وثقافة",fr:"Patrimoine & culture",de:"Erbe & Kultur",it:"Patrimonio e cultura",zh:"遗产与文化"},
+    s:{en:"7,000 years of civilisations.",ar:"7000 عام من الحضارات.",fr:"7 000 ans de civilisations.",de:"7.000 Jahre Zivilisationen.",it:"7.000 anni di civiltà.",zh:"七千年文明。"},
+    dur:{en:"~5 hours",ar:"~5 ساعات",fr:"~5 heures",de:"~5 Std.",it:"~5 ore",zh:"约5小时"},
+    stops:[['hegra','08:30'],['dadan','11:00'],['ikmah','12:30'],['oldtown','16:00']]}
+];
+const tourTxt=(t,f)=>t[f][state.lang]||t[f].en;
+
+/* ================= حساب ================= */
+const R=6371000,toR=d=>d*Math.PI/180,toD=r=>r*180/Math.PI;
 const haversine=(a,b,c,d)=>{const dl=toR(c-a),dn=toR(d-b);const x=Math.sin(dl/2)**2+Math.cos(toR(a))*Math.cos(toR(c))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x));};
 const bearing=(a,b,c,d)=>{const y=Math.sin(toR(d-b))*Math.cos(toR(c));const x=Math.cos(toR(a))*Math.sin(toR(c))-Math.sin(toR(a))*Math.cos(toR(c))*Math.cos(toR(d-b));return (toD(Math.atan2(y,x))+360)%360;};
 const norm180=d=>((d+540)%360)-180;
-const fmtDist=m=>m<1000?Math.round(m/10)*10+' م':(m/1000).toFixed(m<10000?1:0)+' كم';
-const compassName=d=>['شمال','شمال شرق','شرق','جنوب شرق','جنوب','جنوب غرب','غرب','شمال غرب'][Math.round(d/45)%8];
+const fmtDist=m=>m<1000?Math.round(m/10)*10+' m':(m/1000).toFixed(m<10000?1:0)+' km';
+const radLabel=()=>state.radius>=1000?(state.radius/1000)+' km':state.radius+' m';
+const compassName=d=>LANGS[state.lang].cardinals[Math.round(d/45)%8];
 
-/* ===== الحالة ===== */
-const state={mode:'live',user:{...DEMO_CENTER},heading:0,manual:false,cat:'all',query:'',cam:false,orient:false,radius:3000,selected:null,fetching:false};
+/* ================= الحالة ================= */
+const state={lang:'en',mode:'live',user:{...DEMO_CENTER},heading:0,manual:false,dragOn:false,cat:'all',query:'',cam:false,orient:false,radius:3000,selected:null,fetching:false,autoplay:false,autoTarget:null,autoTimer:null};
 const FOV=64,HALF=FOV/2;
-const $=s=>document.querySelector(s);
-let POIS=[],markerEls={},lastFetchPos=null,fetchSeq=0;
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+let POIS=[],markerEls={},blipEls={},lastFetchPos=null,fetchSeq=0,lastCompassHdg=999,wikiCache={},map=null,mapMarkers=[];
 
-/* ===== الفئات ===== */
+const L=k=>{const v=LANGS[state.lang].t[k];return v!==undefined?v:LANGS.en.t[k];};
+const poiName=p=>{const n=p.nm||p.names;if(n)return n[state.lang]||n.en;
+  const t=p.tags||{};return t['name:'+state.lang]||t.name||t['name:en']||'';};
+const poiAbout=p=>{if(p.ab)return p.ab[state.lang]||p.ab.en;
+  const t=p.tags||{};const bits=[`${catLabel(p.cat)} · ${fmtDist(haversine(state.user.lat,state.user.lng,p.lat,p.lng))}`];
+  if(t.cuisine)bits.push(t.cuisine.replace(/;/g,', '));return bits.join('  ·  ');};
+
+/* ================= تطبيق اللغة ================= */
+function applyLang(lang){
+  state.lang=lang;const Lg=LANGS[lang];
+  document.documentElement.lang=lang;document.documentElement.dir=Lg.dir;document.body.dir=Lg.dir;document.body.dataset.lang=lang;
+  $('#langCur').textContent=Lg.native;
+  $$('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');const v=L(k);if(v!=null)el.innerHTML=v;});
+  $$('[data-i18n-ph]').forEach(el=>el.placeholder=L(el.getAttribute('data-i18n-ph')));
+  $('#radarN').textContent=Lg.card4[0];
+  if($('#chips').children.length)buildChips();
+  // إعادة ضبط أزرار النطاق على لغة الأرقام تبقى لاتينية
+  try{localStorage.setItem('alula_lang',lang);}catch(e){}
+}
+function detectLang(){
+  let saved=null;try{saved=localStorage.getItem('alula_lang');}catch(e){}
+  if(saved&&LANGS[saved])return saved;
+  const navs=(navigator.languages||[navigator.language||'en']);
+  for(const n of navs){const c=(n||'').slice(0,2).toLowerCase();if(LANGS[c])return c;}
+  return 'en';
+}
+
+/* ================= قائمة اللغات ================= */
+function buildLangList(){
+  const box=$('#langList');box.innerHTML='';
+  LANG_ORDER.forEach(code=>{
+    const Lg=LANGS[code];const row=document.createElement('div');
+    row.className='langrow'+(code===state.lang?' on':'');
+    row.innerHTML=`<div><b>${Lg.native}</b> <span>${Lg.name}</span></div><svg class="ck" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+    row.onclick=()=>{applyLang(code);buildLangList();$('#langsheet').style.display='none';if(state.selected&&$('#sheet').classList.contains('up'))openSheet(state.selected.id);if($('#list').classList.contains('up'))buildList();};
+    box.appendChild(row);
+  });
+}
+$('#langOpen').onclick=$('#langMini').onclick=()=>{buildLangList();$('#langsheet').style.display='flex';};
+$('#langsheet').onclick=e=>{if(e.target.id==='langsheet')$('#langsheet').style.display='none';};
+
+/* ================= الفئات ================= */
 function buildChips(){
   const wrap=$('#chips');
-  const order=[['all','الكل','var(--ink)'],['heritage',CATS.heritage.ar,CATS.heritage.color],['hotel',CATS.hotel.ar,CATS.hotel.color],['food',CATS.food.ar,CATS.food.color],['event',CATS.event.ar,CATS.event.color]];
-  wrap.innerHTML=order.map(([c,l,col])=>`<div class="chip ${c==='all'?'on':''}" data-c="${c}"><span class="dot" style="background:${col}"></span>${l}</div>`).join('');
+  const order=[['all','var(--ink)'],['heritage',CATS.heritage.color],['hotel',CATS.hotel.color],['food',CATS.food.color],['event',CATS.event.color]];
+  wrap.innerHTML=order.map(([c,col])=>`<div class="chip ${c===state.cat?'on':''}" data-c="${c}"><span class="dot" style="background:${col}"></span>${c==='all'?L('catAll'):catLabel(c)}</div>`).join('');
   wrap.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{state.cat=ch.dataset.c;wrap.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===ch));});
 }
-const visiblePois=()=>POIS.filter(p=>(state.cat==='all'||p.cat===state.cat)&&(!state.query||(p.name+' '+(p.en||'')).toLowerCase().includes(state.query.toLowerCase())));
+const visiblePois=()=>POIS.filter(p=>(state.cat==='all'||p.cat===state.cat)&&(!state.query||poiName(p).toLowerCase().includes(state.query.toLowerCase())));
 
-/* ===== المعالم ===== */
+/* ================= المعالم ================= */
 function setData(arr){
   POIS=arr;
   Object.values(markerEls).forEach(el=>el.remove());markerEls={};
-  const ar=$('#ar');
+  Object.values(blipEls).forEach(el=>el.remove());blipEls={};
+  const ar=$('#ar'),radar=$('#radar');
   POIS.forEach(p=>{
     const el=document.createElement('div');el.className='poi';el.dataset.id=p.id;
-    el.innerHTML=`<div class="pin"><div class="badge" style="background:${CATS[p.cat].hex}"><svg viewBox="0 0 24 24" fill="none" stroke="#16110a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${CATS[p.cat].icon}</svg></div><div class="meta"><b>${p.name}</b><span class="d">—</span></div></div><div class="stem"></div><div class="anchor" style="background:${CATS[p.cat].hex}"></div>`;
+    el.innerHTML=`<div class="pin"><div class="badge" style="background:${CATS[p.cat].hex}"><svg viewBox="0 0 24 24" fill="none" stroke="#16110a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${CATS[p.cat].icon}</svg></div><div class="meta"><b>${poiName(p)}</b><span class="d">—</span></div></div><div class="stem"></div><div class="anchor" style="background:${CATS[p.cat].hex}"></div>`;
     el.onclick=()=>openSheet(p.id);ar.appendChild(el);markerEls[p.id]=el;
+    const blip=document.createElement('div');blip.className='blip';blip.style.background=CATS[p.cat].hex;radar.appendChild(blip);blipEls[p.id]=blip;
   });
 }
 
-/* ===== جلب البيانات الحيّة (OpenStreetMap / Overpass) ===== */
+/* ================= جلب حيّ (OSM) ================= */
 function classify(t){
   if(t.tourism&&/hotel|guest_house|hostel|motel|chalet|apartment|resort/.test(t.tourism))return 'hotel';
   if(t.amenity&&/restaurant|cafe|fast_food|food_court|ice_cream|bar|pub/.test(t.amenity))return 'food';
@@ -422,94 +762,70 @@ function classify(t){
 function parseOSM(els){
   const out=[],seen=new Set();
   els.forEach(el=>{
-    const t=el.tags||{};const name=t['name:ar']||t.name||t['name:en'];if(!name)return;
+    const t=el.tags||{};const name=t['name:'+state.lang]||t.name||t['name:en'];if(!name)return;
     const cat=classify(t);if(!cat)return;
     const lat=el.lat??(el.center&&el.center.lat),lng=el.lon??(el.center&&el.center.lon);if(lat==null)return;
     const key=name+'|'+Math.round(lat*1e4)+'|'+Math.round(lng*1e4);if(seen.has(key))return;seen.add(key);
-    out.push({id:el.type+el.id,cat,name,en:t['name:en']||t.name||name,lat,lng,tags:t,_d:haversine(state.user.lat,state.user.lng,lat,lng)});
+    out.push({id:el.type+el.id,cat,tags:t,lat,lng,_d:haversine(state.user.lat,state.user.lng,lat,lng)});
   });
   return out.sort((a,b)=>a._d-b._d).slice(0,45);
 }
 async function fetchLive(){
   if(state.fetching)return;state.fetching=true;const seq=++fetchSeq;
-  $('#btnRefresh').classList.add('spin');
-  showLoader('نبحث عن الأماكن الحقيقية حولك…');
+  showLoader(L('loading'));
   const {lat,lng}=state.user,r=state.radius;
   const q=`[out:json][timeout:20];(node["tourism"](around:${r},${lat},${lng});node["historic"](around:${r},${lat},${lng});node["amenity"~"restaurant|cafe|fast_food|food_court|ice_cream|bar|pub"](around:${r},${lat},${lng});node["leisure"~"park|garden|nature_reserve"](around:${r},${lat},${lng});way["tourism"](around:${r},${lat},${lng});way["historic"](around:${r},${lat},${lng});way["leisure"~"park|garden"](around:${r},${lat},${lng}););out center 150;`;
   const eps=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter'];
   for(const url of eps){
     try{
       const res=await fetch(url,{method:'POST',body:'data='+encodeURIComponent(q)});
-      if(!res.ok)throw 0;
-      const data=await res.json();
-      if(seq!==fetchSeq){state.fetching=false;return;} // طلب أحدث جارٍ
-      const arr=parseOSM(data.elements||[]);
-      state.fetching=false;$('#btnRefresh').classList.remove('spin');
+      if(!res.ok)throw 0;const data=await res.json();if(seq!==fetchSeq){state.fetching=false;return;}
+      const arr=parseOSM(data.elements||[]);state.fetching=false;
       if(!arr.length){emptyState();return;}
       hideLoader();setData(arr);lastFetchPos={...state.user};
-      status(`<b>${arr.length}</b> مكاناً حقيقياً ضمن ${radLabel()}`);
-      return;
-    }catch(e){/* جرّب الخادم التالي */}
+      status(L('statusLive')(arr.length,radLabel()));if(map)refreshMapMarkers();return;
+    }catch(e){}
   }
-  state.fetching=false;$('#btnRefresh').classList.remove('spin');errorState();
+  state.fetching=false;errorState();
 }
-const radLabel=()=>state.radius>=1000?(state.radius/1000)+' كم':state.radius+' م';
-
-/* ===== المحمّل والحالات ===== */
 function showLoader(msg,retry){$('#loaderText').innerHTML=msg;$('#loaderRetry').classList.toggle('hidden',!retry);$('#loaderSpin').classList.toggle('hidden',!!retry);$('#loader').style.display='flex';}
 function hideLoader(){$('#loader').style.display='none';}
-function errorState(){showLoader('تعذّر جلب الأماكن الآن. تحقّق من اتصالك بالإنترنت وحاول مجدداً.',true);}
-function emptyState(){showLoader(`لا توجد أماكن مسجّلة ضمن ${radLabel()} من موقعك. وسّع النطاق ثم حدّث.`,true);status('لا نتائج — وسّع النطاق');}
-$('#loaderRetry').onclick=()=>{if(state.mode==='demo'){loadDemo();}else{fetchLive();}};
+function errorState(){state.fetching=false;showLoader(L('error'),true);}
+function emptyState(){state.fetching=false;showLoader(L('empty')(radLabel()),true);}
+$('#loaderRetry').onclick=()=>{state.mode==='demo'?loadDemo():fetchLive();};
 function status(html){$('#statusPill').innerHTML=html;}
 
-/* ===== البدء ===== */
+/* ================= البدء ================= */
 $('#modeToggle').querySelectorAll('button').forEach(b=>b.onclick=()=>{state.mode=b.dataset.mode;$('#modeToggle').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));});
-
 $('#startBtn').onclick=async()=>{
   await startCamera();await startOrientation();
-  $('#intro').classList.add('hidden');
+  $('#intro').classList.add('hidden');$('#langbar').classList.add('hidden');
   ['#topbar','#ar','#dock','#radar'].forEach(s=>$(s).classList.remove('hidden'));
   buildChips();requestAnimationFrame(loop);
-  if(!state.orient)setTimeout(()=>toast('حرّك إصبعك يميناً ويساراً على الشاشة لتلتفت حولك'),800);
-  if(state.mode==='demo'){loadDemo();}
-  else{$('#rad').style.display='flex';acquireAndFetch();}
+  if(!state.orient)setTimeout(()=>toast(L('dragHint')),800);
+  if(state.mode==='demo'){loadDemo();}else{$('#rad').style.display='flex';acquireAndFetch();}
 };
-function loadDemo(){
-  $('#rad').style.display='none';state.user={...DEMO_CENTER};setData(DEMO_POIS);hideLoader();
-  status('<b>جولة العلا</b> — 14 معلماً');
-}
+function loadDemo(){$('#rad').style.display='none';state.user={...DEMO_CENTER};setData(DEMO_POIS);hideLoader();status(L('statusTour'));if(map)refreshMapMarkers();}
 function acquireAndFetch(){
-  if(!window.isSecureContext){toast('الموقع يحتاج فتح الصفحة عبر رابط HTTPS — تم تفعيل جولة العلا');state.mode='demo';loadDemo();return;}
-  if(!navigator.geolocation){toast('جهازك لا يدعم تحديد الموقع — تم تفعيل جولة العلا');state.mode='demo';loadDemo();return;}
-  showLoader('نحدّد موقعك…');
+  if(!window.isSecureContext){toast(L('geoHttps'));state.mode='demo';loadDemo();return;}
+  if(!navigator.geolocation){toast(L('noGeo'));state.mode='demo';loadDemo();return;}
+  showLoader(L('locating'));
   navigator.geolocation.getCurrentPosition(pos=>{
     state.user={lat:pos.coords.latitude,lng:pos.coords.longitude};lastFetchPos={...state.user};fetchLive();
-    navigator.geolocation.watchPosition(p2=>{
-      state.user={lat:p2.coords.latitude,lng:p2.coords.longitude};
-      if(lastFetchPos&&haversine(lastFetchPos.lat,lastFetchPos.lng,state.user.lat,state.user.lng)>300&&!state.fetching){fetchLive();}
-    },()=>{},{enableHighAccuracy:true,maximumAge:5000,timeout:9000});
-  },err=>{hideLoader();const m=err&&err.code===1?'تم رفض إذن الموقع — فعّله من إعدادات المتصفح':'تعذّر تحديد موقعك — تم تفعيل جولة العلا';toast(m);state.mode='demo';loadDemo();},
-  {enableHighAccuracy:true,timeout:10000,maximumAge:0});
+    navigator.geolocation.watchPosition(p2=>{state.user={lat:p2.coords.latitude,lng:p2.coords.longitude};
+      if(lastFetchPos&&haversine(lastFetchPos.lat,lastFetchPos.lng,state.user.lat,state.user.lng)>300&&!state.fetching)fetchLive();},()=>{},{enableHighAccuracy:true,maximumAge:5000,timeout:9000});
+  },err=>{hideLoader();toast(err&&err.code===1?L('geoDenied'):L('geoFail'));state.mode='demo';loadDemo();},{enableHighAccuracy:true,timeout:10000,maximumAge:0});
 }
-
-/* ===== الكاميرا والبوصلة ===== */
 async function startCamera(){
   try{const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});$('#cam').srcObject=stream;state.cam=true;}
   catch(e){state.cam=false;$('#cam').style.display='none';$('#backdrop').style.display='block';
-    let m='تعذّر تشغيل الكاميرا — سنعرض أفق الصحراء بدلاً منها';
-    if(!window.isSecureContext)m='الكاميرا تحتاج فتح الصفحة عبر رابط HTTPS';
-    else if(e&&e.name==='NotAllowedError')m='تم رفض إذن الكاميرا — فعّله من إعدادات المتصفح';
-    else if(e&&e.name==='NotFoundError')m='لا توجد كاميرا متاحة على هذا الجهاز';
-    toast(m);}
+    let m=L('camFail');if(!window.isSecureContext)m=L('camHttps');else if(e&&e.name==='NotAllowedError')m=L('camDenied');else if(e&&e.name==='NotFoundError')m=L('camNone');toast(m);}
 }
 async function startOrientation(){
   try{
     if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
-      const res=await DeviceOrientationEvent.requestPermission();if(res!=='granted'){enableDrag();return;}
-    }
-    let got=false;
-    const h=e=>{let v=null;if(e.webkitCompassHeading!=null)v=e.webkitCompassHeading;else if(e.absolute&&e.alpha!=null)v=(360-e.alpha)%360;if(v!=null&&!state.manual){state.heading=v;state.orient=true;got=true;}};
+      const res=await DeviceOrientationEvent.requestPermission();if(res!=='granted'){enableDrag();return;}}
+    let got=false;const h=e=>{let v=null;if(e.webkitCompassHeading!=null)v=e.webkitCompassHeading;else if(e.absolute&&e.alpha!=null)v=(360-e.alpha)%360;if(v!=null&&!state.manual){state.heading=v;state.orient=true;got=true;}};
     window.addEventListener('deviceorientationabsolute',h,true);window.addEventListener('deviceorientation',h,true);
     setTimeout(()=>{if(!got)enableDrag();},700);
   }catch(e){enableDrag();}
@@ -517,38 +833,32 @@ async function startOrientation(){
 function enableDrag(){
   if(state.orient||state.dragOn)return;state.dragOn=true;state.manual=true;
   let down=false,sx=0,sh=0;const surface=$('#app');
-  const dn=e=>{if(e.target.closest('#dock,#topbar,#sheet,#search,#list,.poi,.edge,#loader'))return;down=true;sx=e.touches?e.touches[0].clientX:e.clientX;sh=state.heading;};
+  const dn=e=>{if(e.target.closest('#dock,#topbar,#sheet,#search,.screen,.poi,.edge,#loader,#langsheet,#langbar'))return;down=true;sx=e.touches?e.touches[0].clientX:e.clientX;sh=state.heading;};
   const mv=e=>{if(!down)return;const x=e.touches?e.touches[0].clientX:e.clientX;state.heading=(sh+(sx-x)*0.4+360)%360;};
   const up=()=>down=false;
   surface.addEventListener('touchstart',dn,{passive:true});surface.addEventListener('touchmove',mv,{passive:true});surface.addEventListener('touchend',up);
   surface.addEventListener('mousedown',dn);window.addEventListener('mousemove',mv);window.addEventListener('mouseup',up);
 }
-
-/* ===== نطاق + تحديث ===== */
 $('#rad').querySelectorAll('button').forEach(b=>b.onclick=()=>{state.radius=+b.dataset.r;$('#rad').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(state.mode==='live')fetchLive();});
-$('#btnRefresh').onclick=()=>{state.mode==='demo'?loadDemo():fetchLive();};
 
-/* ===== حلقة العرض ===== */
+/* ================= حلقة العرض ================= */
 function loop(){
-  const W=window.innerWidth,H=window.innerHeight,cx=W/2,pxPerDeg=cx/HALF;
-  if(state.autoplay&&state.autoTarget!=null){state.heading=(state.heading+norm180(state.autoTarget-state.heading)*0.07+360)%360;}
-  drawCompass();
+  const W=innerWidth,H=innerHeight,cx=W/2,pxPerDeg=cx/HALF;
+  if(state.autoplay&&state.autoTarget!=null)state.heading=(state.heading+norm180(state.autoTarget-state.heading)*0.07+360)%360;
+  if(Math.abs(norm180(state.heading-lastCompassHdg))>0.4){drawCompass();lastCompassHdg=state.heading;}
   $('#hdgReadout').textContent=`${Math.round(state.heading)}°  ${compassName(state.heading)}`;
   $('#radarCone').style.transform=`translate(-50%,-100%) rotate(${state.heading}deg)`;
-  document.querySelectorAll('#radar .blip').forEach(b=>b.remove());
   let lc=0,rc=0;const vis=visiblePois();
   POIS.forEach(p=>{
-    const el=markerEls[p.id];if(!el)return;
-    if(!vis.includes(p)){el.style.display='none';return;}
+    const el=markerEls[p.id],blip=blipEls[p.id];if(!el)return;
+    if(!vis.includes(p)){el.style.display='none';if(blip)blip.style.display='none';return;}
     const d=haversine(state.user.lat,state.user.lng,p.lat,p.lng),b=bearing(state.user.lat,state.user.lng,p.lat,p.lng),rel=norm180(b-state.heading);
-    const rd=Math.min(d/(state.radius*1.1),1),rr=42*rd,ang=toR(rel-90);
-    const blip=document.createElement('div');blip.className='blip';blip.style.left=(48+rr*Math.cos(ang))+'px';blip.style.top=(48+rr*Math.sin(ang))+'px';blip.style.background=CATS[p.cat].hex;$('#radar').appendChild(blip);
+    if(blip){const rd=Math.min(d/(state.radius*1.1),1),rr=41*rd,ang=toR(rel-90);blip.style.display='block';blip.style.left=(46+rr*Math.cos(ang))+'px';blip.style.top=(46+rr*Math.sin(ang))+'px';}
     if(Math.abs(rel)<=HALF+4){
-      const x=cx+rel*pxPerDeg,t=Math.min(d/Math.max(state.radius,1),1),y=H*0.30+t*(H*0.30),scale=1.15-t*0.45;
+      const x=cx+rel*pxPerDeg,t=Math.min(d/Math.max(state.radius,1),1),y=H*0.30+t*(H*0.30),scale=1.12-t*0.42;
       el.style.display='flex';el.style.left=x+'px';el.style.top=y+'px';el.style.transform=`translate(-50%,-50%) scale(${scale.toFixed(3)})`;
-      el.style.zIndex=String(1000-Math.round(d/10));
-      el.classList.toggle('dim',Math.abs(rel)>HALF*0.7);
-      el.classList.toggle('hit',state.query&&(p.name+' '+(p.en||'')).toLowerCase().includes(state.query.toLowerCase()));
+      el.style.zIndex=String(1000-Math.round(d/10));el.classList.toggle('dim',Math.abs(rel)>HALF*0.7);
+      el.classList.toggle('hit',state.query&&poiName(p).toLowerCase().includes(state.query.toLowerCase()));
       el.querySelector('.d').textContent=`${fmtDist(d)} · ${Math.round(b)}°`;
     }else{el.style.display='none';if(rel<0)rc++;else lc++;}
   });
@@ -559,78 +869,129 @@ function toggleEdge(sel,n,c){const e=$(sel);if(c>0){e.classList.remove('hidden')
 function drawCompass(){
   const c=$('#compass'),W=c.clientWidth,cx=W/2,pxPerDeg=cx/55;
   c.querySelectorAll('.tick').forEach(t=>t.remove());
-  const cards={0:'ش',90:'ق',180:'ج',270:'غ'};
+  const cards=LANGS[state.lang].card4;
   for(let d=0;d<360;d+=15){const rel=norm180(d-state.heading);if(Math.abs(rel)>55)continue;const x=cx+rel*pxPerDeg,isC=cards[d]!==undefined;
     const t=document.createElement('div');t.className='tick'+(isC?' card':'');t.style.left=x+'px';
     t.innerHTML=`<div class="bar"></div>${isC?`<div class="lb">${cards[d]}</div>`:(d%45===0?`<div class="lb">${d}</div>`:'')}`;c.appendChild(t);}
 }
 
-/* ===== التفاصيل ===== */
+/* ================= صور ومحتوى ويكيبيديا ================= */
+async function getWiki(p){
+  const lang=state.lang,key=p.id+'|'+lang;
+  if(wikiCache[key]!==undefined)return wikiCache[key];
+  let title=null,wlang=lang;
+  if(p.wiki)title=p.wiki[lang]||p.wiki.en;
+  const t=p.tags||{};
+  if(!title&&t['wikipedia']&&t['wikipedia'].includes(':')){wlang=t['wikipedia'].split(':')[0];title=t['wikipedia'].split(':').slice(1).join(':');}
+  let img=t.image||null,extract=null;
+  if(title){
+    try{const r=await fetch(`https://${wlang}.wikipedia.org/api/rest_v1/page/summary/`+encodeURIComponent(title));
+      if(r.ok){const d=await r.json();if(d.thumbnail&&d.thumbnail.source)img=img||d.thumbnail.source;if(d.extract)extract=d.extract;}}catch(e){}
+  }
+  return wikiCache[key]={img,extract};
+}
+
+/* ================= التفاصيل ================= */
 function openSheet(id){
   const p=POIS.find(x=>x.id===id);if(!p)return;state.selected=p;
   const d=haversine(state.user.lat,state.user.lng,p.lat,p.lng),b=bearing(state.user.lat,state.user.lng,p.lat,p.lng),t=p.tags||{};
-  $('#sBadge').style.background=CATS[p.cat].hex;
-  $('#sBadge').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#16110a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${CATS[p.cat].icon}</svg>`;
-  $('#sCat').textContent=CATS[p.cat].ar;$('#sCat').style.color=CATS[p.cat].color;
-  $('#sName').innerHTML=p.name+(p.en&&p.en!==p.name?`<small>${p.en}</small>`:'');
+  const hex=CATS[p.cat].hex;
+  $('#sHero').style.background=`linear-gradient(160deg,${hex},#2a2018)`;
+  $('#sPh').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#16110a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${CATS[p.cat].icon}</svg>`;
+  const img=$('#sImg');img.classList.remove('on');img.src='';
+  $('#sCat').style.background=hex;$('#sCat').textContent=catLabel(p.cat);
+  $('#sName').innerHTML=poiName(p);
   $('#sDist').textContent=fmtDist(d);$('#sBear').textContent=`${Math.round(b)}° ${compassName(b)}`;
-  // الإحصاء الثالث
-  if(p.rate){$('#sExtraK').textContent='التقييم';$('#sExtra').textContent='★ '+p.rate;$('#sExtra').classList.add('rate');}
-  else{const cu=t.cuisine?t.cuisine.split(';')[0]:CATS[p.cat].ar;$('#sExtraK').textContent='النوع';$('#sExtra').textContent=cu;$('#sExtra').classList.remove('rate');}
-  // الوصف
-  let desc=p.info||t['description:ar']||t.description||'';
-  if(!desc){const bits=[`${CATS[p.cat].ar} على بُعد ${fmtDist(d)} من موقعك الحالي.`];
-    if(t.cuisine)bits.push('المطبخ: '+t.cuisine.replace(/;/g,'، '));
-    if(t.opening_hours)bits.push('ساعات العمل: '+t.opening_hours);
-    if(t.phone||t['contact:phone'])bits.push('هاتف: '+(t.phone||t['contact:phone']));
-    bits.push('اضغط الأزرار أدناه لقراءة التقييمات أو الانطلاق إلى الموقع.');desc=bits.join('  ·  ');}
-  $('#sDesc').textContent=desc;
+  if(p.exp){$('#sExtraK').textContent=L('duration');$('#sExtra').textContent=expName(p);$('#sExtra').classList.remove('rate');}
+  else if(p.rate){$('#sExtraK').textContent=L('rating');$('#sExtra').textContent='★ '+p.rate;$('#sExtra').classList.add('rate');}
+  else{const cu=t.cuisine?t.cuisine.split(';')[0]:catLabel(p.cat);$('#sExtraK').textContent=L('type');$('#sExtra').textContent=cu;$('#sExtra').classList.remove('rate');}
+  $('#sAbout').textContent=poiAbout(p);$('#sCredit').classList.add('hidden');
+  // نصيحة + ساعات
+  const tip=p.tp?(p.tp[state.lang]||p.tp.en):null;
+  $('#sTipBlock').classList.toggle('hidden',!tip);if(tip)$('#sTip').textContent=tip;
   // الأزرار
   const acts=$('#actions');acts.innerHTML='';
-  const q=encodeURIComponent(p.name);
-  addAct(acts,'',`https://www.google.com/maps/search/?api=1&query=${q}`,'<polygon points="12 2 15 9 22 9.5 17 14 19 21 12 17 5 21 7 14 2 9.5 9 9"/>','تقييمات Google','MAPS');
-  addAct(acts,'',`https://www.tripadvisor.com/Search?q=${encodeURIComponent(p.en||p.name)}`,'<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/>','Tripadvisor','REVIEWS');
-  const web=t.website||t['contact:website'];if(web)addAct(acts,'',web,'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>','الموقع','WEB');
-  const ph=t.phone||t['contact:phone'];if(ph)addAct(acts,'',`tel:${ph}`,'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>','اتصال','CALL');
-  addAct(acts,'go',`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`,'<polygon points="3 11 22 2 13 21 11 13 3 11"/>','انطلق إلى الموقع عبر خرائط Google');
+  const q=encodeURIComponent(poiName(p)+' AlUla');
+  addAct(acts,'',`https://www.google.com/maps/search/?api=1&query=${q}`,'<polygon points="12 2 15 9 22 9.5 17 14 19 21 12 17 5 21 7 14 2 9.5 9 9"/>',L('gReviews'),'MAPS');
+  addAct(acts,'',`https://www.tripadvisor.com/Search?q=${q}`,'<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/>',L('tripadvisor'),'REVIEWS');
+  const web=t.website||t['contact:website'];if(web)addAct(acts,'',web,'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>',L('website'),'WEB');
+  const ph=t.phone||t['contact:phone'];if(ph)addAct(acts,'',`tel:${ph}`,'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',L('call'),'CALL');
+  addBtn(acts,'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>',L('listen'),()=>speak(poiAbout(p),state.lang));
+  addBtn(acts,'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',L('share'),()=>sharePlace(p));
+  if(p.link&&!p.exp)addAct(acts,'',p.link,'<path d="M12 2 L19 21 L12 17 L5 21 Z"/>',L('official'),'ALULA');
+  if(p.exp&&p.link)addAct(acts,'go',p.link,'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',L('book')+' · '+fmtPrice(p));
+  else addAct(acts,'go',`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`,'<polygon points="3 11 22 2 13 21 11 13 3 11"/>',L('directions'));
   $('#sheet').classList.add('up');
+  // صورة ومحتوى ويكيبيديا (كسول)
+  getWiki(p).then(w=>{if(state.selected!==p)return;
+    if(w.extract&&!p.ab){$('#sAbout').textContent=w.extract;$('#sCredit').textContent=L('credit');$('#sCredit').classList.remove('hidden');}
+    if(w.img){const im=new Image();im.onload=()=>{if(state.selected===p){img.src=w.img;img.classList.add('on');}};im.src=w.img;}
+  });
 }
-function addAct(parent,cls,href,svg,label,src){
-  const a=document.createElement('a');a.className='act'+(cls?' '+cls:'');a.href=href;a.target='_blank';a.rel='noopener';
-  a.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg}</svg>${label}${src?`<span class="src">${src}</span>`:''}`;
-  parent.appendChild(a);
-}
-$('#sheetClose').onclick=()=>$('#sheet').classList.remove('up');
+function addAct(parent,cls,href,svg,label,src){const a=document.createElement('a');a.className='act'+(cls?' '+cls:'');a.href=href;a.target='_blank';a.rel='noopener';
+  a.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg}</svg>${label}${src?`<span class="src">${src}</span>`:''}`;parent.appendChild(a);}
+function addBtn(parent,svg,label,fn){const a=document.createElement('button');a.className='act';a.onclick=fn;
+  a.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg}</svg>${label}`;parent.appendChild(a);}
+$('#sheetClose').onclick=()=>{if('speechSynthesis' in window)speechSynthesis.cancel();$('#sheet').classList.remove('up');};
 
-/* ===== البحث ===== */
+/* ================= البحث ================= */
 $('#btnSearch').onclick=()=>{$('#search').classList.remove('hidden');$('#searchInput').focus();};
 $('#searchClose').onclick=()=>{$('#search').classList.add('hidden');state.query='';$('#searchInput').value='';};
 $('#searchInput').oninput=e=>{state.query=e.target.value.trim();
   if(state.query){const m=visiblePois();if(m.length){const p=m[0],b=bearing(state.user.lat,state.user.lng,p.lat,p.lng),rel=norm180(b-state.heading);
-    if(Math.abs(rel)>HALF)toast(`«${p.name}» إلى ${rel<0?'يمينك':'يسارك'} — التفت ${Math.round(Math.abs(rel))}°`);}}};
+    if(Math.abs(rel)>HALF)toast(`«${poiName(p)}» — ${L('turn')(rel<0?L('right'):L('left'),Math.round(Math.abs(rel)))}`);}}};
 
-/* ===== القائمة ===== */
+/* ================= القائمة ================= */
 $('#btnList').onclick=()=>{buildList();$('#list').classList.add('up');};
 $('#listClose').onclick=()=>$('#list').classList.remove('up');
 function buildList(){
   const body=$('#listBody');
   const arr=visiblePois().map(p=>({p,d:haversine(state.user.lat,state.user.lng,p.lat,p.lng),b:bearing(state.user.lat,state.user.lng,p.lat,p.lng)})).sort((a,b)=>a.d-b.d);
-  if(!arr.length){body.innerHTML='<p style="color:var(--muted);text-align:center;padding:40px 0;font-size:14px">لا توجد أماكن مطابقة. جرّب فئة أخرى أو امسح البحث.</p>';return;}
-  body.innerHTML=arr.map(({p,d,b})=>`<div class="lcard" data-id="${p.id}"><div class="badge" style="background:${CATS[p.cat].hex}"><svg viewBox="0 0 24 24" fill="none" stroke="#16110a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${CATS[p.cat].icon}</svg></div><div class="info"><b>${p.name}</b><div class="sub">${p.rate?`<span style="color:var(--gold)">★ ${p.rate}</span>`:`<span>${CATS[p.cat].ar}</span>`}<span>${fmtDist(d)}</span><span>${compassName(b)}</span></div></div><div class="arrow">${Math.round(b)}°<span class="deg">الاتجاه</span></div></div>`).join('');
+  if(!arr.length){body.innerHTML=`<p style="color:var(--muted);text-align:center;padding:40px 0;font-size:14px">${L('empty')(radLabel())}</p>`;return;}
+  body.innerHTML=arr.map(({p,d,b})=>`<div class="lcard" data-id="${p.id}"><div class="lthumb" style="background:linear-gradient(160deg,${CATS[p.cat].hex},#2a2018)"><svg viewBox="0 0 24 24" fill="none" stroke="#16110a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${CATS[p.cat].icon}</svg><img data-pid="${p.id}"></div><div class="info"><b>${poiName(p)}</b><div class="sub">${p.rate?`<span style="color:var(--gold)">★ ${p.rate}</span>`:`<span>${catLabel(p.cat)}</span>`}<span>${fmtDist(d)}</span><span>${compassName(b)}</span></div></div><div class="arrow">${Math.round(b)}°<span class="deg">${L('stBear')}</span></div></div>`).join('');
   body.querySelectorAll('.lcard').forEach(c=>c.onclick=()=>{$('#list').classList.remove('up');openSheet(c.dataset.id);});
+  // صور مصغّرة كسولة
+  arr.forEach(({p})=>getWiki(p).then(w=>{if(!w.img)return;const im=body.querySelector(`img[data-pid="${p.id}"]`);if(im){im.onload=()=>im.classList.add('on');im.src=w.img;}}));
 }
 
-/* ===== التقاط ===== */
+/* ================= الخريطة ================= */
+$('#btnMap').onclick=openMap;
+$('#mapClose').onclick=()=>$('#mapscr').classList.remove('up');
+function openMap(){
+  if(typeof L_LEAFLET==='undefined'&&typeof window.L==='undefined'){toast(LANGS[state.lang].t.mapNet);return;}
+  $('#mapscr').classList.add('up');
+  setTimeout(()=>{
+    if(!map){
+      try{
+        map=window.L.map('mapbox',{zoomControl:true,attributionControl:true}).setView([state.user.lat,state.user.lng],13);
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+        window.L.circleMarker([state.user.lat,state.user.lng],{radius:7,color:'#D8A24A',fillColor:'#D8A24A',fillOpacity:1,weight:2}).addTo(map);
+      }catch(e){toast(LANGS[state.lang].t.mapNet);return;}
+    }
+    refreshMapMarkers();map.invalidateSize();map.setView([state.user.lat,state.user.lng],13);
+  },220);
+}
+function refreshMapMarkers(){
+  if(!map||!window.L)return;
+  mapMarkers.forEach(m=>map.removeLayer(m));mapMarkers=[];
+  visiblePois().forEach(p=>{
+    const m=window.L.circleMarker([p.lat,p.lng],{radius:8,color:'#16110a',weight:1.5,fillColor:CATS[p.cat].hex,fillOpacity:0.95});
+    m.on('click',()=>{$('#mapscr').classList.remove('up');openSheet(p.id);});
+    m.bindTooltip(poiName(p),{direction:'top'});m.addTo(map);mapMarkers.push(m);
+  });
+}
+
+/* ================= التقاط ================= */
 $('#shutter').onclick=capture;
 function capture(){
-  const cv=$('#capCanvas'),ctx=cv.getContext('2d'),W=window.innerWidth,H=window.innerHeight;cv.width=W;cv.height=H;
+  const cv=$('#capCanvas'),ctx=cv.getContext('2d'),W=innerWidth,H=innerHeight;cv.width=W;cv.height=H;
   if(state.cam){const v=$('#cam'),vw=v.videoWidth,vh=v.videoHeight;if(vw&&vh){const s=Math.max(W/vw,H/vh),dw=vw*s,dh=vh*s;ctx.drawImage(v,(W-dw)/2,(H-dh)/2,dw,dh);}}
   else{const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#15110D');g.addColorStop(.6,'#5E4427');g.addColorStop(1,'#8A6638');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);}
   POIS.forEach(p=>{const el=markerEls[p.id];if(!el||el.style.display==='none')return;const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
     ctx.fillStyle=CATS[p.cat].hex;ctx.beginPath();ctx.arc(x,y+r.height/2,6,0,7);ctx.fill();
-    ctx.font='600 15px IBM Plex Sans Arabic, sans-serif';const tw=ctx.measureText(p.name).width;
-    ctx.fillStyle='rgba(16,12,9,0.82)';roundRect(ctx,x-tw/2-16,y-18,tw+32,30,15);ctx.fill();
-    ctx.fillStyle='#F4EEE3';ctx.textAlign='center';ctx.fillText(p.name,x,y+2);});
+    ctx.font='600 15px '+(state.lang==='ar'?'IBM Plex Sans Arabic':state.lang==='zh'?'Noto Sans SC':'system-ui')+', sans-serif';
+    const nm=poiName(p),tw=ctx.measureText(nm).width;ctx.fillStyle='rgba(16,12,9,0.82)';roundRect(ctx,x-tw/2-16,y-18,tw+32,30,15);ctx.fill();
+    ctx.fillStyle='#F4EEE3';ctx.textAlign='center';ctx.fillText(nm,x,y+2);});
   ctx.fillStyle='rgba(216,162,74,0.95)';ctx.font='700 13px Space Grotesk, sans-serif';ctx.textAlign='left';ctx.fillText('ALULA · AR',16,H-20);
   const url=cv.toDataURL('image/png');$('#shotImg').src=url;$('#shotSave').href=url;$('#shot').style.display='flex';
   const f=$('#flash');f.style.transition='none';f.style.opacity='.9';requestAnimationFrame(()=>{f.style.transition='opacity .5s';f.style.opacity='0';});
@@ -638,63 +999,133 @@ function capture(){
 function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 $('#shotClose').onclick=()=>$('#shot').style.display='none';
 
-/* ===== تنبيه ===== */
-let tT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),3600);}
-
-/* ===== العرض التلقائي (للعرض على الإدارة) ===== */
+/* ================= العرض التلقائي ================= */
 const HILITE=['hegra','elephant','dadan','ikmah','maraya','banyan','suhail','tantora'];
 $('#autoBtn').onclick=startAutoplay;
 function startAutoplay(){
   state.mode='demo';state.autoplay=true;state.manual=true;
   $('#cam').style.display='none';$('#backdrop').style.display='block';
-  $('#intro').classList.add('hidden');
+  $('#intro').classList.add('hidden');$('#langbar').classList.add('hidden');
   ['#topbar','#ar','#dock','#radar'].forEach(s=>$(s).classList.remove('hidden'));
   buildChips();$('#rad').style.display='none';loadDemo();
-  $('#autobadge').classList.remove('hidden');
-  state.autoTarget=state.heading;requestAnimationFrame(loop);autoStep(0);
-  $('#app').addEventListener('pointerdown',e=>{if(!e.target.closest('#autobadge,#intro'))stopAutoplay();},{once:true});
+  $('#autobadge').classList.remove('hidden');state.autoTarget=state.heading;requestAnimationFrame(loop);autoStep(0);
+  $('#app').addEventListener('pointerdown',e=>{if(!e.target.closest('#autobadge,#intro,#langsheet'))stopAutoplay();},{once:true});
 }
 function autoStep(i){
-  if(!state.autoplay)return;
-  const p=DEMO_POIS.find(x=>x.id===HILITE[i%HILITE.length]);if(!p)return;
+  if(!state.autoplay)return;const p=DEMO_POIS.find(x=>x.id===HILITE[i%HILITE.length]);if(!p)return;
   state.cat='all';$('#chips').querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.c==='all'));
   state.autoTarget=bearing(state.user.lat,state.user.lng,p.lat,p.lng);
   state.autoTimer=setTimeout(()=>{if(!state.autoplay)return;openSheet(p.id);
     state.autoTimer=setTimeout(()=>{if(!state.autoplay)return;$('#sheet').classList.remove('up');
       state.autoTimer=setTimeout(()=>autoStep(i+1),750);},3600);},1750);
 }
-function stopAutoplay(){
-  if(!state.autoplay)return;state.autoplay=false;clearTimeout(state.autoTimer);
-  $('#autobadge').classList.add('hidden');$('#sheet').classList.remove('up');
-  enableDrag();toast('انتقلت إلى التحكم اليدوي — حرّك إصبعك للالتفات');
-}
+function stopAutoplay(){if(!state.autoplay)return;state.autoplay=false;clearTimeout(state.autoTimer);$('#autobadge').classList.add('hidden');$('#sheet').classList.remove('up');enableDrag();toast(L('manual'));}
 
-/* ===== PWA: التثبيت والعمل دون إنترنت ===== */
+/* ================= تنبيه ================= */
+let tT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),3600);}
+
+/* ================= PWA ================= */
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').classList.remove('hidden');});
-$('#installBtn').onclick=async()=>{
-  if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('#installBtn').classList.add('hidden');}
-};
+$('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('#installBtn').classList.add('hidden');}};
 window.addEventListener('appinstalled',()=>$('#installBtn').classList.add('hidden'));
-(function iosHint(){
-  const iOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
-  const standalone=window.navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;
-  if(iOS&&!standalone){const b=$('#installBtn');b.classList.remove('hidden');b.textContent='⬇ للتثبيت: زر المشاركة ثم «إضافة إلى الشاشة الرئيسية»';b.style.fontSize='13px';
-    b.onclick=()=>toast('في سفاري: اضغط زر المشاركة بالأسفل، ثم «إضافة إلى الشاشة الرئيسية»');}
-})();
 
-/* ===== كشف بيئة التشغيل ===== */
-(function checkEnv(){
-  const inFrame = window.self!==window.top;
-  if(!window.isSecureContext || inFrame){
-    const n=$('#envNote');n.style.display='block';
-    n.innerHTML='⚠ لتشغيل الكاميرا و GPS يجب فتح الصفحة عبر رابط <b>HTTPS</b> على هاتفك. '+
-      (inFrame?'أنت الآن داخل نافذة معاينة لا تسمح بذلك. ':'')+
-      'جرّب <b>«جولة العلا»</b> الآن، أو ارفع الملف على استضافة مجانية (الخطوات في المحادثة).';
-    const demoBtn=document.querySelector('#modeToggle [data-mode="demo"]');
-    if(demoBtn){demoBtn.click();}
+/* ================= الدليل الصوتي ================= */
+const BCP={en:'en-US',ar:'ar-SA',fr:'fr-FR',de:'de-DE',it:'it-IT',zh:'zh-CN'};
+let voices=[];
+function loadVoices(){try{voices=speechSynthesis.getVoices()||[];}catch(e){voices=[];}}
+if('speechSynthesis' in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices;}
+function pickVoice(lc){return voices.find(v=>v.lang&&v.lang.toLowerCase().startsWith(lc+'-'))||voices.find(v=>v.lang&&v.lang.toLowerCase().startsWith(lc));}
+function speak(text,lc){
+  if(!('speechSynthesis' in window)||!text){toast(L('ttsOff'));return;}
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);u.rate=lc==='ar'?0.82:0.92;u.lang=BCP[lc]||lc;
+  const v=pickVoice(lc);if(v)u.voice=v;
+  speechSynthesis.speak(u);
+}
+$('#sSpeak').onclick=()=>{const p=state.selected;if(!p)return;
+  const arName=p.nm?p.nm.ar:poiName(p);
+  if(pickVoice('ar'))speak(arName,'ar');else speak(poiName(p),state.lang);
+};
+
+/* ================= المسارات ================= */
+$('#btnTours').onclick=()=>{buildTours();$('#tours').classList.add('up');};
+$('#toursClose').onclick=()=>$('#tours').classList.remove('up');
+function buildTours(){
+  $('#toursHead').textContent=L('tours');
+  const body=$('#toursBody');
+  body.innerHTML=TOURS.map(t=>`<div class="lcard" data-tour="${t.id}"><div class="lthumb" style="background:linear-gradient(160deg,${t.hex},#2a2018)"><svg viewBox="0 0 24 24" fill="none" stroke="#16110a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg></div><div class="info"><b>${tourTxt(t,'t')}</b><div class="sub" style="white-space:normal">${tourTxt(t,'s')}</div><div class="sub"><span>${tourTxt(t,'dur')}</span><span>${t.stops.length} ${L('stops')}</span></div></div><div class="arrow">›</div></div>`).join('');
+  // ===== قسم التجارب القابلة للحجز =====
+  const exps=DEMO_POIS.filter(p=>p.exp);
+  if(exps.length){
+    body.innerHTML+=`<div style="margin:22px 2px 10px"><div style="font-size:15px;font-weight:700">${L('bookable')}</div><div style="font-size:12px;color:var(--muted);margin-top:3px">${L('bookableSub')}</div></div>`;
+    body.innerHTML+=exps.map(p=>`<div class="lcard" data-id="${p.id}"><div class="lthumb" style="background:linear-gradient(160deg,${CATS.event.hex},#2a2018)"><svg viewBox="0 0 24 24" fill="none" stroke="#16110a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div><div class="info"><b>${poiName(p)}</b><div class="sub"><span class="num" style="color:var(--gold)">${fmtPrice(p)}</span><span>${expName(p)}</span></div></div><div class="arrow">›</div></div>`).join('');
   }
+  body.querySelectorAll('[data-tour]').forEach(c=>c.onclick=()=>openTour(TOURS.find(x=>x.id===c.dataset.tour)));
+  body.querySelectorAll('.lcard[data-id]').forEach(c=>c.onclick=()=>{$('#tours').classList.remove('up');openSheet(c.dataset.id);});
+}
+function openTour(t){
+  $('#toursHead').textContent=tourTxt(t,'t');
+  const body=$('#toursBody');
+  let html=`<button class="close" id="tourBack" style="margin:2px 0 14px"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>${L('tours')}</button>`;
+  html+=`<p style="color:var(--muted);font-size:13.5px;line-height:1.6;margin-bottom:14px">${tourTxt(t,'s')} · ${tourTxt(t,'dur')}</p>`;
+  html+=`<button class="btn-ghost" id="tourMap" style="width:100%;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 8 3 16 6 23 3 23 18 16 21 8 18 1 21 1 6"/><line x1="8" y1="3" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="21"/></svg>${L('viewRoute')}</button>`;
+  t.stops.forEach(([id,time],i)=>{
+    const p=DEMO_POIS.find(x=>x.id===id);if(!p)return;
+    html+=`<div class="lcard" data-id="${id}"><div class="lthumb" style="background:linear-gradient(160deg,${CATS[p.cat].hex},#2a2018);position:relative"><span style="position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-weight:700;color:#16110a;font-size:18px">${i+1}</span></div><div class="info"><b>${poiName(p)}</b><div class="sub"><span class="num">${time}</span><span>${catLabel(p.cat)}</span></div></div><div class="arrow">›</div></div>`;
+  });
+  body.innerHTML=html;
+  body.querySelector('#tourBack').onclick=buildTours;
+  body.querySelector('#tourMap').onclick=()=>{$('#tours').classList.remove('up');showRoute(t);};
+  body.querySelectorAll('[data-id]').forEach(c=>c.onclick=()=>{$('#tours').classList.remove('up');openSheet(c.dataset.id);});
+}
+function showRoute(t){
+  if(!window.L){toast(LANGS[state.lang].t.mapNet);return;}
+  $('#mapscr').classList.add('up');
+  setTimeout(()=>{
+    if(!map){try{map=window.L.map('mapbox',{zoomControl:true}).setView([state.user.lat,state.user.lng],12);
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);}catch(e){toast(LANGS[state.lang].t.mapNet);return;}}
+    mapMarkers.forEach(m=>map.removeLayer(m));mapMarkers=[];
+    const pts=[];
+    t.stops.forEach(([id],i)=>{const p=DEMO_POIS.find(x=>x.id===id);if(!p)return;pts.push([p.lat,p.lng]);
+      const ic=window.L.divIcon({className:'',html:`<div style="width:26px;height:26px;border-radius:50%;background:${t.hex};color:#16110a;font:700 13px var(--mono),monospace;display:grid;place-items:center;border:2px solid #16110a;box-shadow:0 2px 8px rgba(0,0,0,.5)">${i+1}</div>`,iconSize:[26,26],iconAnchor:[13,13]});
+      const m=window.L.marker([p.lat,p.lng],{icon:ic}).on('click',()=>{$('#mapscr').classList.remove('up');openSheet(p.id);}).bindTooltip(poiName(p),{direction:'top'});m.addTo(map);mapMarkers.push(m);});
+    if(pts.length>1){const line=window.L.polyline(pts,{color:t.hex,weight:3,opacity:0.8,dashArray:'6 6'});line.addTo(map);mapMarkers.push(line);map.fitBounds(line.getBounds().pad(0.25));}
+    map.invalidateSize();
+  },220);
+}
+
+/* ================= المشاركة الاجتماعية ================= */
+async function dataUrlToFile(url,name){const b=await (await fetch(url)).blob();return new File([b],name,{type:'image/png'});}
+function caption(){const p=state.selected;return (p?poiName(p)+' — ':'')+'#AlUla #VisitAlUla #السعودية';}
+async function nativeSharePhoto(){
+  const url=$('#shotImg').src;if(!url)return false;
+  try{const file=await dataUrlToFile(url,'alula-ar.png');
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],text:caption()});return true;}
+    if(navigator.share){await navigator.share({text:caption()});return true;}
+  }catch(e){if(e&&e.name==='AbortError')return true;}
+  return false;
+}
+$('#shareIG').onclick=async()=>{if(!await nativeSharePhoto())toast(L('saveFirst'));};
+$('#shareTT').onclick=async()=>{if(!await nativeSharePhoto())toast(L('saveFirst'));};
+$('#shareFB').onclick=()=>{const p=state.selected;const link=p?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(poiName(p)+' AlUla')}`:'https://www.rcu.gov.sa';window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}&quote=${encodeURIComponent(caption())}`,'_blank');};
+$('#shareX').onclick=()=>{const p=state.selected;const link=p?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(poiName(p)+' AlUla')}`:'https://www.rcu.gov.sa';window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(caption())}&url=${encodeURIComponent(link)}`,'_blank');};
+async function sharePlace(p){
+  const name=poiName(p),link=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name+' AlUla')}`,text=name+' — #AlUla #VisitAlUla';
+  if(navigator.share){try{await navigator.share({title:name,text,url:link});return;}catch(e){if(e&&e.name==='AbortError')return;}}
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(link)}`,'_blank');
+}
+
+/* ================= تشغيل ================= */
+applyLang(detectLang());
+(function envCheck(){
+  const inFrame=window.self!==window.top;
+  if(!window.isSecureContext||inFrame){
+    const demoBtn=document.querySelector('#modeToggle [data-mode="demo"]');if(demoBtn)demoBtn.click();
+  }
+  const iOS=/iphone|ipad|ipod/i.test(navigator.userAgent),standalone=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
+  if(iOS&&!standalone){const b=$('#installBtn');b.classList.remove('hidden');b.textContent=L('installIOS');b.style.fontSize='13px';b.onclick=()=>toast(L('installIOS'));}
 })();
 </script>
 </body>
